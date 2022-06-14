@@ -1,0 +1,103 @@
+``mzapy.isotopes``
+=======================================
+This module defines functions for dealing with compound isotopes and masses
+
+
+The ``MolecularFormula`` class
+--------------------------------------
+``MolecularFormula`` is a subclass of ``collections.UserDict`` which behaves like a typical ``dict``, but supports extended functionality that is specific to molecular formulas, like addition/subtraction operations and different methods of initialization. Because ``MolecularFormula`` has the same interface as a normal ``dict``, any code which uses the old representation of molecular formulas (a plain ``dict`` mapping elements (``str``) to their counts (``int``)) can be updated to use this class instead without breaking anything. Using this class makes most of the common molecular formula operations much cleaner and simpler to implement. The ``MolecularFormula`` class also has ``__repr__`` and ``__str__`` methods implemented: 
+
+* ``__repr__`` outputs similar to a normal ``dict`` but with "MolecularFormula" prepended to it
+* ``__str__`` outputs the formula in the familiar element/count format (*e.g.*, "C4H9O2N")
+
+
+A ``MolecularFormula`` may be initialized in one of four ways: 
+
+* empty - start without any elements 
+* from ``dict`` - using the previous style of molecular formula (``dict(str:int)``)
+* from ``MolecularFormula`` - initialize using another ``MolecularFormula`` instance (copy the data)
+* from ``kwargs`` - initialize with ``kwargs`` where the names are the elements and values are the counts
+
+.. code-block:: python3
+    :caption: Initialization
+
+    from mzapy.isotopes import MolecularFormula
+
+    ### empty
+    formula = MolecularFormula()
+    # formula.__repr__ -> 'MolecularFormula{}'
+    # formula.__str__ -> ''
+
+    ### from dict
+    old_style_formula = {'C': 3, 'H': 8, 'O': 2}
+    formula = MolecularFormula(old_style_formula)
+    # formula.__repr__ -> 'MolecularFormula{'C': 3, 'H': 8, 'O': 2}'
+    # formula.__str__ -> 'C3H8O2'
+
+    ### from MolecularFormula
+    formula = MolecularFormula({'C': 3, 'H': 8, 'O': 2})
+    new_formula = MolecularFormula(formula)
+    # formula.__repr__ -> 'MolecularFormula{'C': 3, 'H': 8, 'O': 2}'
+    # formula.__str__ -> 'C3H8O2'
+
+    ### from kwargs
+    formula = MolecularFormula(C=3, H=8, O=2)
+    # formula.__repr__ -> 'MolecularFormula{'C': 3, 'H': 8, 'O': 2}'
+    # formula.__str__ -> 'C3H8O2'
+
+
+``MolecularFormula`` objects support direct addition/subtraction operations with other ``MolecularFormula`` instances and also previous style of molecular formulas (``dict(str:int)``) in most cases. Addition/subtraction operations are performed element-wise and always return a ``MolecularFormula`` instance. 
+
+.. note:: 
+    
+    Addition is commutative, so adding a ``MolecularFormula`` and ``dict(str:int)`` works the same in either order. This is not the case for subtraction, however, ``MolecularFormula`` - ``dict(str:int)`` works but ``dict(str:int)`` - ``MolecularFormula`` does not.
+
+
+.. code-block:: python3
+    :caption: Addition and Subtraction Examples
+
+    from mzapy.isotopes import MolecularFormula
+
+    # C4H10O2 (butyric acid)
+    butyric_acid = MolecularFormula(C=4, H=8, O=2)
+    # butyric_acid.__repr__ -> "MolecularFormula{'C': 4, 'H': 8, 'O': 2}"
+    # butyric_acid.__str__ -> "C4H8O2"
+
+    # deprotonate (butyrate)
+    butyrate = butyric_acid - {'H': 1}
+    # butyrate.__repr__ -> "MolecularFormula{'C': 4, 'H': 7, 'O': 2}"
+    # butyrate.__str__ -> "C4H7O2"
+
+    # add ammonium counter-ion
+    ammonium = MolecularFormula(N=1, H=4)
+    ammonium_butyrate = ammonium + butyrate
+    # ammonium_butyrate.__repr__ -> "MolecularFormula{'C': 4, 'H': 11, 'O': 2, 'N'}"
+    # ammonium_butyrate.__str__ -> "C4H11O2N"
+
+    # build a hydrocarbon formula from methylene (CH2) units in a for-loop
+    octane = MolecularFormula(H=1)  # start with one terminal H
+    for i in range(8):
+        octane += {'C': 1, 'H': 2}  # add methylene units
+    octane += {'H': 1}  # finish off with the other terminal H
+    # octane.__repr__ -> "MolecularFormula{'C': 8, 'H': 18}"
+    # octane.__str__ -> "C8H18"
+
+
+Module Reference
+---------------------------------------
+.. autoclass:: mzapy.isotopes.MolecularFormula
+
+.. autofunction:: mzapy.isotopes.MolecularFormula.__init__
+
+.. autofunction :: mzapy.isotopes.valid_element
+
+.. autofunction :: mzapy.isotopes.valid_ms_adduct
+
+.. autofunction :: mzapy.isotopes.monoiso_mass
+
+.. autofunction :: mzapy.isotopes.ms_adduct_formula
+
+.. autofunction :: mzapy.isotopes.ms_adduct_mz
+
+.. autofunction :: mzapy.isotopes.predict_m_m1_m2
+
