@@ -188,18 +188,14 @@ _ADDUCT_FORMULAS = {
     '[M-2H]2-': MolecularFormula({'H': -2}),
     '[M-3H]3-': MolecularFormula({'H': -3}),
     '[M+2Na-H]+': MolecularFormula({'H': -1, 'Na': 2}),
-    '[M+2H]2+': MolecularFormula({'H': 2}),
-    '[M+3H]3+': MolecularFormula({'H': 3}),
-    '[M+4H]4+': MolecularFormula({'H': 4}),
-    '[M+4H]4+': MolecularFormula({'H': 4}),
-    '[M+5H]5+': MolecularFormula({'H': 5}),
-    '[M+6H]6+': MolecularFormula({'H': 6}),
-    '[M+7H]7+': MolecularFormula({'H': 7}),
 }
+# add protonation states from +2H to +20H
+for z in range(2, 21):
+    _ADDUCT_FORMULAS['[M+{z}H]{z}+'.format(z=z)] = MolecularFormula({'H': z})
 
 
 # define charge states for commonly observed MS ionizations
-_ADDUCT_CHRGES = {
+_ADDUCT_CHARGES = {
     '[M]+': 1,
     '[M+H]+': 1,
     '[M+Na]+': 1,
@@ -213,13 +209,10 @@ _ADDUCT_CHRGES = {
     '[M-2H]2-': 1,
     '[M-3H]3-': 1,
     '[M+2Na-H]+': 1,
-    '[M+2H]2+': 2,
-    '[M+3H]3+': 3,
-    '[M+4H]4+': 4,
-    '[M+5H]5+': 5,
-    '[M+6H]6+': 6,
-    '[M+7H]7+': 7,
 }
+# add protonation states from +2H to +20H
+for z in range(2, 21):
+    _ADDUCT_CHARGES['[M+{z}H]{z}+'.format(z=z)] = z
 
 
 def valid_ms_adduct(adduct):
@@ -299,7 +292,7 @@ def ms_adduct_mz(neutral_formula, adduct):
         msg = 'ms_adduct_mz: MS adduct "{}" not recognized'
         raise ValueError(msg.format(adduct))
     formula += _ADDUCT_FORMULAS[adduct]
-    z = _ADDUCT_CHRGES[adduct]
+    z = _ADDUCT_CHARGES[adduct]
     return monoiso_mass(formula) / z
 
 

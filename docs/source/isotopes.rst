@@ -111,6 +111,19 @@ Molecular formulas and m/z values can be computed for various MS adducts using :
 [M+5H]5+        5
 [M+6H]6+        6
 [M+7H]7+        7
+[M+8H]8+        8
+[M+9H]9+        9
+[M+10H]10+      10
+[M+11H]11+      11
+[M+12H]12+      12
+[M+13H]13+      13
+[M+14H]14+      14
+[M+15H]15+      15
+[M+16H]16+      16
+[M+17H]17+      17
+[M+18H]18+      18
+[M+19H]19+      19
+[M+20H]20+      20
 ============  ======== 
 
 

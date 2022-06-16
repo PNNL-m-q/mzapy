@@ -73,7 +73,7 @@ The versioning scheme follows the format *mza_version.major_version.minor_versio
 
 .. note::
 
-    When creating a branch to implement a bugfix, new feature, or add documentaion, append ".<your_github_username>0" 
+    When creating a branch to implement a bugfix, new feature, or add documentaion, append ".<your_github_username>_0" 
     to the current ``__version__`` variable in ``mzapy/__init__.py``, then increment the number at the end with each 
     commit you make to that branch.
     
