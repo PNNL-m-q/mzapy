@@ -158,6 +158,8 @@ class MolecularFormula(collections.UserDict):
         """
         s = ''
         for e, c in self.data.items():
+            if e[0] in '0123456789':
+                e = '[' + e + ']'  # put brackets around heavy elements 
             if c != 0:  # skip 0 count elements entirely
                 if c == 1:  # no number for elements with a count of 1
                     s += e
@@ -263,10 +265,13 @@ def monoiso_mass(formula):
     """
     mass = 0.
     for element in formula:
-        if element not in _ELEMENT_MONOISO_MASS:
+        if element in _ELEMENT_MONOISO_MASS:
+            mass += _ELEMENT_MONOISO_MASS[element] * formula[element]
+        elif element in _HEAVY_ISOTOPE_MASS:
+            mass += _HEAVY_ISOTOPE_MASS[element] * formula[element]
+        else:
             msg = 'monoiso_mass: element "{}" not recognized'
-            raise ValueError(msg.format(element))
-        mass += _ELEMENT_MONOISO_MASS[element] * formula[element]
+            raise ValueError(msg.format(element))       
     # round the result just in case any funky floating point stuff happend with the multiplications
     return round(mass, 6)
 
