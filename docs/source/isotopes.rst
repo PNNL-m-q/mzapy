@@ -83,9 +83,40 @@ A ``MolecularFormula`` may be initialized in one of four ways:
     # octane.__str__ -> "C8H18"
 
 
+MS Adducts
+----------
+Molecular formulas and m/z values can be computed for various MS adducts using :func:`mzapy.isotopes.ms_adduct_formula` and 
+:func:`mzapy.isotopes.ms_adduct_mz`. The available adduct types are:
+
+
+============  ======== 
+ adduct         z   
+============  ======== 
+[M]+            1
+[M+H]+          1
+[M+Na]+         1
+[M+K]+          1
+[M+2K]2+        2
+[M+NH4]+        1
+[M+H-H2O]+      1
+[M-H]-          1
+[M+HCOO]-       1
+[M+CH3COO]-     1
+[M-2H]2-        1
+[M-3H]3-        1
+[M+2Na-H]+      1
+[M+2H]2+        2
+[M+3H]3+        3
+[M+4H]4+        4
+[M+5H]5+        5
+[M+6H]6+        6
+[M+7H]7+        7
+============  ======== 
+
+
 Module Reference
 ---------------------------------------
-.. autoclass:: mzapy.isotopes.MolecularFormula
+.. autoclass: mzapy.isotopes.MolecularFormula
 
 .. autofunction:: mzapy.isotopes.MolecularFormula.__init__
 

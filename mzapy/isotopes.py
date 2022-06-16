@@ -191,6 +191,10 @@ _ADDUCT_FORMULAS = {
     '[M+2H]2+': MolecularFormula({'H': 2}),
     '[M+3H]3+': MolecularFormula({'H': 3}),
     '[M+4H]4+': MolecularFormula({'H': 4}),
+    '[M+4H]4+': MolecularFormula({'H': 4}),
+    '[M+5H]5+': MolecularFormula({'H': 5}),
+    '[M+6H]6+': MolecularFormula({'H': 6}),
+    '[M+7H]7+': MolecularFormula({'H': 7}),
 }
 
 
@@ -212,6 +216,9 @@ _ADDUCT_CHRGES = {
     '[M+2H]2+': 2,
     '[M+3H]3+': 3,
     '[M+4H]4+': 4,
+    '[M+5H]5+': 5,
+    '[M+6H]6+': 6,
+    '[M+7H]7+': 7,
 }
 
 
