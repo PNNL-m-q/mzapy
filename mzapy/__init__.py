@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.1.0'
+__version__ = '1.1.0.dylanhross_3'
 
 
 import queue
@@ -587,7 +587,6 @@ class MZA():
         ms1_int : ``numpy.ndarray(int)``
             intensity component of MS1 spectrum
         """
-        ms1_df = self.collect_ms1_df_by_rt(rt_min, rt_max, mz_bounds=mz_bounds)
         ms1_df = self.collect_ms1_df_by_rt_dt(self.min_rt, self.max_rt, dt_min, dt_max, mz_bounds=mz_bounds)
         df = ms1_df.groupby('mz').intensity.sum()
         ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
