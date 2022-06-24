@@ -134,33 +134,6 @@ class _CalibrationBase:
         return self.fit_function(X, *self.opt_params)
 
 
-class LinearRegression(_CalibrationBase):
-    """
-    Simple test-case: linear regression
-    """
-    
-    def __init__(self, X, y):
-        """
-        Initialize a new instance of LinearRegression using a set of known x and y values, performs fitting
-        at initialization
-
-        Parameters
-        ----------
-        x : ``numpy.ndarray(float)``
-            input values
-        y : ``numpy.ndarray(float)``
-            known output values
-        """
-        # superclass __init__
-        super().__init__()
-        # set initial parameters
-        self.init_params = (0., 0.)
-        self.fit_function = lambda X, a, b: a * X + b
-        # store inputs and do fitting
-        self.X_, self.y_ = X, y
-        self.fit(self.X_, self.y_)
-
-
 class TWCCSCalibration(_CalibrationBase):
     """
     TWIM CCS calibration
