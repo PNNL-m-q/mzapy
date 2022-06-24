@@ -6,295 +6,267 @@ Dylan Ross (dylan.ross@pnnl.gov)
     Module for performing calibration operations.
 
     CCS for TWIM measurements, method based on:
-        - Anal. Chem. 2016, 88, 7329−7336 (calibration power function)
-        - Nat. Protoc. 2008, 3, 1139–1152 (dt and CCS correction)
+        - Nat. Protoc. 2008, 3, 1139-1152 (dt and CCS correction)
+        - Anal. Chem. 2016, 88, 7329-7336 (calibration power function)
+        - Anal. Chem. 2020, 92, 14976-14982 (CCS calibration for SLIM)
 """
 
 
 import math
+from multiprocessing.sharedctypes import Value
 
 from scipy import optimize
-from matplotlib import pyplot as plt, gridspec as gs
 import numpy as np
 
 from mzapy.isotopes import monoiso_mass
 
 
-class _CCSCalibrationBase:
+class _CalibrationBase:
     """
-    Modular base object for making and applying CCS calibrations, not meant to be used directly
+    Modular base object for performing calibration
+
+    Works similar to BaseEstimator from sklearn, implements fit and transform methods. 
+    Subclasses must implement self.fit_function with signature: ``self.fit_function(X, *params) -> y``
+    and they must override the attribute self.init_params with initial parameter values for the fitting function.
+
+    Methods
+    -------
+    fit(X, y) -> y_fit
+        Takes input values (X) and known output values (y), then performs least-squares optimization 
+        with subclass defined self.fit_function. Returns the fitted values (y_fit) 
+        and sets self.opt_params with the optimized parameters
+    transform(X) -> y_transform
+        Takes  input values (X) and uses subclass defined self.fit_function with optimized parameters 
+        (self.opt_params) to produce output values (y_transform). Requires self.fit method to run 
+        successfully first so that self.opt_params gets set
 
     Attributes
     ----------
-    ref_mass : ``float``
-        reference mass (for reduced mass calculation)
-    edc : ``float``
-        EDC delay coefficient
-    charge : ``float``
-        charge state
-    calibrated : ``bool``
-        indicates whether a calibration has set up
-    cal_params : ``tuple(float or None)``
-        calibration parameters (A, t0, B) or (None, None, None) if calibration has not been set up
-    cal_data : ``tuple(list(float) or None)``
-        calibration data (mz, dt, ref_ccs) or (None, None, None) if calibration has not been set up
-    cal_corr_data : ``tuple(list(float) or None)``
-        corrected calibration data (corr_dt, corr_ref_ccs) or (None, None) if calibration has not been set up
+    init_params : ``tuple(?)``
+        initial parameter values for fitting function, must be set by subclass
+    opt_params : ``tuple(?)``
+        optimized parameter values for fitting function, set by self.fit method, initially set to None to indicate
+        the calibration has not been fit yet
     """
 
-    def __init__(self, ref_mass, edc, charge):
+    def __init__(self):
         """
-        inits a new instance of CCSCalibrationBase
+        initialize new _CalibrationBase instance
+        """
+        # set attributes
+        self.init_params = None
+        self.opt_params = None  # should be overridden in subclasses
+
+    @staticmethod
+    def fit_function(X, *params):
+        """
+        ! must be overridden by subclass, calling this function raises an exception !
 
         Parameters
         ----------
-        ref_mass : ``float``
-            reference mass (drift gas)
-        edc : ``float``
-            EDC delay coefficient
-        charge : ``int``
-            charge state
+        X : ``numpy.ndarray(float)`` or ``float``
+            input values
+        params : ``tuple(?)``
+            fitting function parameters
+
+        Returns
+        -------
+        y : ``numpy.ndarray(float)`` or ``float``
+            fitting function output
         """
-        self.ref_mass = ref_mass
-        self.edc = edc
-        self.charge = float(charge)
-        # flag whether a calibration curve has been fit
-        self.calibrated = False
-        # calibration curve parameters
-        self.cal_params = (None, None, None)
-        # masses, dts, and reference ccss used to fit the calibration curve
-        self.cal_data = (None, None, None)
-        # corrected dts and reference ccss
-        self.cal_corr_data = (None, None)
+        msg = ('_CalibrationBase: fit_function: This is the base class fitting function,'
+               ' it should have been overridden by subclass')
+        raise RuntimeError(msg)
+
+    def fit(self, X, y):
+        """
+        Takes input values (X) and known output values (y), then performs least-squares optimization 
+        with subclass defined self.fit_function. Returns the fitted values (y_fit) 
+        and sets self.opt_params with the optimized parameters
+
+        Parameters
+        ----------
+        X : ``numpy.ndarray(float)``
+            input values
+        y : ``numpy.ndarray(float)``
+            known output values
+
+        Returns
+        -------
+        y_fit : ``numpy.ndarray(float)``
+            fitted output values
+        """
+        # check that self.init_params has been set
+        if self.init_params is None:
+            msg = '_CalibrationBase: fit: self.init_params has not been set, this should have been set by subclass'
+            raise RuntimeError(msg)
+        try:
+            opt_params, cov = optimize.curve_fit(self.fit_function, X, y, maxfev=50000, p0=self.init_params)
+        except Exception as e:
+            msg = '_CalibrationBase: fit: unable to fit calibration:\n{}'
+            raise RuntimeError(msg.format(e))            
+        # if fit successful, set the optimized parameters
+        self.opt_params = opt_params
+        # then return the transformed input values (y_fit)
+        return self.transform(X)
+
+    def transform(self, X):
+        """
+        Takes  input values (X) and uses subclass defined self.fit_function with optimized parameters 
+        (self.opt_params) to produce output values (y_transform). Requires self.fit method to run 
+        successfully first so that self.opt_params gets set
+
+        Parameters
+        ----------
+        X : ``numpy.ndarray(float)`` or ``float``
+            input values
+
+        Returns
+        -------
+        y_transform : ``numpy.ndarray(float)`` or ``float``
+            fitted y values
+        """
+        # ensure that self.opt_params has been set, indicating that fitting has already occurred
+        if self.opt_params is None:
+            msg = ('_CalibrationBase: transform: self.opt_params has not been set, self.fit must be successfully'
+                   ' run prior to using this method')
+            raise RuntimeError(msg)
+        return self.fit_function(X, *self.opt_params)
+
+
+class TWCCSCalibration(_CalibrationBase):
+    """
+    TWIM CCS calibration
+
+    Attributes
+    ----------
+    mz : ``numpy.ndarray(float)``
+        calibrant m/z values
+    arrival_time : ``numpy.ndarray(float)``
+        calibrant arrival times
+    ref_ccs : ``numpy.ndarray(float)``
+        calibrant reference CCS values
+    z : ``float``
+        charge state (converted to float)
+    fit_func : ``str``
+        specify the type of function to use for fitting the calibration curve. Valid options are: ''
+    correct_ccs : ``bool``
+        perform CCS correction for charge state and reduced mass with buffer gas
+    correct_dt : ``bool``
+        perform arrival time correction for mass-dependent flight time outside of mobility region, this only
+        really applies for cases where the mobility separation region is sufficiently small so that the time
+        outside this region must be accounted for and is instrument-specific.
+    buffer_gas : ``str``
+        buffer gas for IM separation
+    edc : ``float``
+        EDC delay coefficient for arrival time correction (if used)
+    """
+
+    # map valid fit functions to the actual functions and initial parameters
+    _valid_fit_funcs = {
+        'linear': (lambda X, a, b: a * X + b, (1., 0.)), 
+        'quadratic': (lambda X, a, b, c: a * X**2 + b * X + c, (0., 1., 0.)),
+        'power1': (lambda X, a, b, c: a + b * np.power(X, c), (500., 1., 0.5)), 
+        'power2': (lambda X, a, b, c: a * np.power((X + b), c), (1., 1e-4, 0.5)),
+    }
+    # map valid buffer gasses to their mass
+    _valid_buffer_gasses = {
+        'N2': monoiso_mass({'N': 2}), 
+        'He': monoiso_mass({'He': 1}),
+    }
+
+    def __init__(self, mz, arrival_time, ref_ccs, z, fit_func,
+                 correct_ccs=True, correct_dt=False, edc=None, buffer_gas='N2', fit=True):
+        """
+        Initialize a new instance of TWCCSCalibration using 
+
+        Performs fitting at initialization.
+
+        Parameters
+        ----------
+        mz : ``numpy.ndarray(float)``
+            calibrant m/z values
+        arrival_time : ``numpy.ndarray(float)``
+            calibrant arrival times
+        ref_ccs : ``numpy.ndarray(float)``
+            calibrant reference CCS values
+        z : ``int``
+            charge state
+        fit_func : ``str``
+            specify the type of function to use for fitting the calibration curve. Valid options are: 'linear',
+            'quadratic', 'power1', 'power2'
+        correct_ccs : ``bool``, default=True
+            perform CCS correction for charge state and reduced mass with buffer gas
+        correct_dt : ``bool``, default=False
+            perform arrival time correction for mass-dependent flight time outside of mobility region, this only
+            really applies for cases where the mobility separation region is sufficiently small so that the time
+            outside this region must be accounted for and is instrument-specific. If this is set to True, then the
+            edc kwarg is also expected to be set.
+        edc : ``float``, optional
+            if arrival times should be corrected, set this as the EDC delay coefficient
+        buffer_gas : ``str``, default='N2'
+            specify buffer gas for IM separation
+        fit : ``bool``, default=True
+            perform fitting at initialization
+        """
+        # validate and store parameters
+        self.mz, self.arrival_time, self.ref_ccs, self.z, self.fit_func =  mz, arrival_time, ref_ccs, float(z), fit_func
+        if self.fit_func not in self._valid_fit_funcs:
+            msg = 'TWCCSCalibration: __init__: fit_func "{}" invalid, must be one of: {}'
+            raise ValueError(msg.format(self.fit_func, self._valid_fit_funcs))
+        # set fit_function and init_params based on fit_func
+        self.fit_function, self.init_params = self._valid_fit_funcs[self.fit_func]
+        self.correct_ccs, self.correct_dt, self.edc = correct_ccs, correct_dt, edc
+        if self.correct_dt and self.edc is None:
+            msg = 'TWCCSCalibration: __init__: correct_dt was set but no edc was provided'
+            raise ValueError(msg)
+        self.buffer_gas = buffer_gas
+        if self.buffer_gas not in self._valid_buffer_gasses:
+            msg = 'TWCCSCalibration: __init__: buffer_gas "{}" invalid, must be one of: {}'
+            raise ValueError(msg.format(self.fit_func, self._valid_buffer_gasses))
+        self.buffer_gas_mass = self._valid_buffer_gasses[self.buffer_gas]
+        if fit:
+            # setup values for fitting, make corrections if applicable
+            self._X = self._correct_dt(self.arrival_time, self.mz) if self.correct_dt else self.arrival_time
+            self._y = self._correct_ccs(self.ref_ccs, self.mz) if self.correct_ccs else self.ref_ccs
+            # fit calibration curve
+            self._y_fit = self.fit(self._X, self._y)
 
     def _reduced_mass(self, mz):
         """
-        Calculates reduced mass of an ion using a reference mass (self.ref_mass)
-        
-        Paramters
-        ---------
-        mz : ``float``
-            input m/z
-        
-        Returns
-        -------
-        reduced_mass : ``float``
-            reduced mass
+        compute reduced mass for an m/z with the buffer gas
         """
-        return (mz * self.ref_mass) / (mz + self.ref_mass)
+        m = mz * self.z  # mass not m/z
+        return m * self.buffer_gas_mass / (m + self.buffer_gas_mass)
+    
+    def _correct_ccs(self, ccs, mz):
+        """
+        CCS' = CCS / (z * sqrt(1 / reduced_mass))
+        """
+        return ccs / (self.z * np.sqrt(1. / self._reduced_mass(mz)))
 
-    def _corrected_dt(self, dt, mz):
+    def _inverse_correct_ccs(self, ccs_corr, mz):
         """
-        Calculates a drift time corrected for mass-dependent flight time outside of mobility region
-        uses EDC delay coefficient in self.edc, 
-        alternative strategy is to calculate this flight time using transfer region length and wave velocity
-        
-        Paramters
-        ---------
-        dt : ``float``
-            original drift time
-        mz : ``float``
-            m/z to use for the correction
+        CCS = CCS' * z * sqrt(1 / reduced_mass)
+        """
+        return ccs_corr * self.z * np.sqrt(1. / self._reduced_mass(mz))
 
-        Returns
-        -------
-        corr_dt : ``float``
-            corrected drift time
+    def _correct_dt(self, arrival_time, mz):
         """
-        return dt - (math.sqrt(mz) * self.edc) / 1000.
+        dt' = dt - (edc * sqrt(mz) / 1000)
+        """
+        return arrival_time - (self.edc * np.sqrt(mz) / 1e3)
 
-    def _corrected_ccs(self, ccs, mz):
+    def calibrated_ccs(self, mz, arrival_time):
         """
-        Calculates CCS corrected for mass-dependent flight time
+        returns calibrated CCS values for a set of m/z values and arrival times (also works for single values)
 
         Parameters
         ----------
-        ccs : ``float``
-            original CCS
-        mz : ``float``
-            m/z to use for the correction
-        
-        Returns
-        -------
-        corr_ccs : ``float``
-            corrected CCS
+        mz : ``numpy.ndarray(float)`` or ``float``
+            m/z value(s)
+        arrival_time : ``numpy.ndarray(float)`` or ``float``
+            arrival time(s)
         """
-        return ccs * (self.charge * math.sqrt(self._reduced_mass(mz)))
-
-    def _cal_curve(self, corr_dt, A, t0, B):
-        """
-        Basic power function for calibration curve of the form:
-            CCS' = z * A * (dt' + t0)^B
-        
-        Parameters
-        ----------
-        corr_dt : ``float``
-            corrected drift time
-        A : ``float``
-            A parameter
-        t0 : ``float``
-            t0 parameter
-        B : ``float``
-            B parameter
-
-        Returns
-        -------
-        corr_ccs : ``float``
-            corrected CCS
-    """
-        return self.charge * A * (corr_dt + t0)**B
-
-    def _fit_cal_curve(self, mzs, dts, ccss):
-        """
-        Fits a calibration curve to dt and CCS values and stores the optimized
-        parameters in ``self.cal_params``
-        *Expects UNCORRECTED dts and ccss*
-
-        Parameters
-        ----------
-        mzs : ``list(float)``
-            calibrant m/zs
-        dts : ``list(float)``
-            uncorrected calibrant drift times
-        ccss : ``list(float)``
-            uncorrected calibrant ccss
-        """
-        # need to create a temporary instance of this class so self.cal_curve can be used as a bound method in curve_fit
-        temp_cal = _CCSCalibrationBase(self.ref_mass, self.edc, self.charge)
-        corr_dt = [self._corrected_dt(dt, mass) for dt, mass in zip(dts, mzs)]
-        corr_ccs = [self._corrected_ccs(ccs, mass) for ccs, mass in zip(ccss, mzs)]
-        self.cal_params, cov = optimize.curve_fit(temp_cal.cal_curve,
-                                                  corr_dt, corr_ccs,
-                                                  maxfev=1000000, p0=(500., 0.001, 0.5))
-        # after a successful fit store the masses, drift times, ccss used to
-        # create the calibration curve
-        self.calibrated = True
-        self.cal_data = (mzs, dts, ccss)
-        self.cal_corr_data = (corr_dt, corr_ccs)
-
-    def calibrated_ccs(self, mz, dt):
-        """
-        Use the calibration curve parameters in ``self.cal_params`` to
-        compute calibrated CCS for an m/z dt pair
-        
-        Parameters
-        ----------
-        mz : ``float``
-            m/z
-        dt : ``float``
-            drift time
-        
-        Returns
-        -------
-        ccs : ``float``
-            calibrated ccs
-        """
-        if not self.calibrated:
-            raise RuntimeError("CCSCalibrationBase: calibrated_ccs: calibration curve has not been fit yet")
-        return self._cal_curve(self._corrected_dt(dt, mz), *self.cal_params) / (self.charge * math.sqrt(self._reduced_mass(mz)))
-
-    def cal_curve_figure(self, fig_name):
-        """
-        Produces a figure from the CCS calibration curve with residuals and saves it as a .png
-        
-        Parameters
-        ----------
-        fig_name : ``str``
-            filename to save the calibration curve under
-        """
-        if not self.calibrated:
-            raise RuntimeError("CCSCalibrationBase: cal_curve_figure: calibration curve has not been fit yet")
-        # gather necessary data
-        corr_dt, corr_ccs = self.cal_corr_data
-        masses, dts, ccss = self.cal_data
-        corr_ccs_calc = [self._corrected_ccs(self.calibrated_ccs(mass, dt), mass) for mass, dt in zip(masses, dts)]
-        ccs_resid = [100. * (ccs - self.calibrated_ccs(mass, dt)) / ccs for mass, dt, ccs in zip(masses, dts, ccss)]
-        # set up the figure
-        fig = plt.figure(figsize=(5, 4.5))
-        grid = gs.GridSpec(2, 1, height_ratios=(5, 2))
-        ax1, ax2 = fig.add_subplot(grid[0]), fig.add_subplot(grid[1])
-        ax2.axhline(lw=0.75, ls="--", c="k")
-        # plot the data
-        ax1.plot(corr_dt, corr_ccs, "bo", ms=4, mew=1, fillstyle='none', label='calibrants')
-        x = np.linspace(min(corr_dt), max(corr_dt), 100)
-        y = self._cal_curve(x, *self.cal_params)
-        ax1.plot(x, y, "b-", lw=1, alpha=0.6, label='fitted')
-        ax1.legend(frameon=False)
-        ax2.bar(corr_dt, ccs_resid, 0.25, color=(0., 0., 1., 0.5), align='center')
-        # axis adjustments and labels
-        ax1.set_title("CCS calibration")
-        ax1.set_ylabel("corrected CCS")
-        ax2.set_ylabel("residual CCS (%)")
-        ax2.set_xlabel("corrected drift time (ms)")
-        for d in ['top', 'right']:
-            ax1.spines[d].set_visible(False)
-            ax2.spines[d].set_visible(False)
-        ax2.spines['bottom'].set_visible(False)
-        plt.savefig(fig_name, dpi=400, bbox_inches='tight')
-        plt.close()
-
-    def __str__(self):
-        """
-        produces a string representation of this instance, contains information
-        about the calibration curve (if fitted)
-        
-        Returns
-        -------
-        s : ``str``
-            string representation of this CCSCalibrationBase object
-        """
-        if self.cal_params[0] is None:
-            return "CCS calibration curve not fitted"
-        # calibration has been completed, include the fitted calibration curve parameters
-        else:
-            return "CCS calibration fitted parameters: \n\tA = {:.3f}\n\tt0 = {:.3f}\n\tB = {:.3f}".format(*self.cal_params)
-
-
-class CCSCalibrationList(_CCSCalibrationBase):
-    """
-    object for making and applying CCS calibrations using lists of m/z, dt, and reference CCS
-
-    Attributes
-    ----------
-    ref_mass : ``float``
-        reference mass (for reduced mass calculation)
-    edc : ``float``
-        EDC delay coefficient
-    charge : ``float``
-        charge state
-    calibrated : ``bool``
-        indicates whether a calibration has set up
-    cal_params : ``tuple(float or None)``
-        calibration parameters (A, t0, B) or (None, None, None) if calibration has not been set up
-    cal_data : ``tuple(list(float) or None)``
-        calibration data (mz, dt, ref_ccs) or (None, None, None) if calibration has not been set up
-    cal_corr_data : ``tuple(list(float) or None)``
-        corrected calibration data (corr_dt, corr_ref_ccs) or (None, None) if calibration has not been set up
-    """
-
-    def __init__(self, edc, charge, mz, dt, ref_ccs):
-        """
-        inits a CCS calibration object from lists of m/z, drift times, and reference CCS values for calibrants
-        Automatically tries to fit calibration curve 
-        Assumes N2 as drift gas for reduced mass calculation
-        
-        Parameters
-        ----------
-        edc : ``float``
-            EDC delay coefficient
-        charge : ``int``
-            charge state
-        mz : list(float)
-            calibrant m/z values
-        dt : ``list(float)``
-            calibrant drift times
-        ref_ccs : ``list(float)``
-            calibrant reference CCS values
-        """
-        # run superclass __init__ with ref mass, EDC, and charge state
-        # default to nitrogen for reduced mass calculation
-        super().__init__(monoiso_mass({'N': 2}), edc, charge)
-
-        # fit calibration curve
-        self._fit_cal_curve(mz, dt, ref_ccs)
-
+        ccs = self.transform(self._correct_dt(arrival_time, mz) if self.correct_dt else arrival_time)
+        return self._inverse_correct_ccs(ccs, mz) if self.correct_ccs else ccs

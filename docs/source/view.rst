@@ -126,3 +126,4 @@ Module Reference
 
 .. autofunction :: mzapy.view._setup_and_save_or_show_plot
 
+.. autofunction :: mzapy.view.plot_tw_ccs_calibration

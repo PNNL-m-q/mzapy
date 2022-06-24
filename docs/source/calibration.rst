@@ -5,17 +5,22 @@ Module for performing calibration operations.
 
 CCS for TWIM measurements, method based on:
 
-- Anal. Chem. 2016, 88, 7329−7336 (calibration power function)
-- Nat. Protoc. 2008, 3, 1139–1152 (dt and CCS correction) 
+- *Nat. Protoc. 2008, 3, 1139-1152* (dt and CCS correction)
+- *Anal. Chem. 2016, 88, 7329-7336* (calibration power function)
+- *Anal. Chem. 2020, 92, 14976-14982* (CCS calibration for SLIM)
 
 
 Module Reference
 ---------------------------------------
-.. autoclass:: mzapy.calibration.CCSCalibrationList
 
-.. autofunction:: mzapy.calibration.CCSCalibrationList.__init__
+.. autoclass:: mzapy.calibration._CalibrationBase
 
-.. autofunction:: mzapy.calibration.CCSCalibrationList.calibrated_ccs
+.. autofunction:: mzapy.calibration._CalibrationBase.fit
 
-.. autofunction:: mzapy.calibration.CCSCalibrationList.cal_curve_figure
+.. autofunction:: mzapy.calibration._CalibrationBase.transform
 
+.. autoclass:: mzapy.calibration.TWCCSCalibration
+
+.. autofunction:: mzapy.calibration.TWCCSCalibration.__init__
+
+.. autofunction:: mzapy.calibration.TWCCSCalibration.calibrated_ccs
