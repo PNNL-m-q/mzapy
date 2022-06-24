@@ -6,8 +6,9 @@ Dylan Ross (dylan.ross@pnnl.gov)
     Module for performing calibration operations.
 
     CCS for TWIM measurements, method based on:
-        - Anal. Chem. 2016, 88, 7329−7336 (calibration power function)
-        - Nat. Protoc. 2008, 3, 1139–1152 (dt and CCS correction)
+        - Nat. Protoc. 2008, 3, 1139-1152 (dt and CCS correction)
+        - Anal. Chem. 2016, 88, 7329-7336 (calibration power function)
+        - Anal. Chem. 2020, 92, 14976-14982 (CCS calibration for SLIM)
 """
 
 
@@ -20,6 +21,179 @@ import numpy as np
 from mzapy.isotopes import monoiso_mass
 
 
+class _CalibrationBase:
+    """
+    Modular base object for performing calibration
+
+    Works similar to BaseEstimator from sklearn, implements fit and transform methods. 
+    Subclasses must implement self.fit_function with signature:
+    
+    ::
+
+        @staticmethod
+        self.fit_function(X, *params) -> y
+    
+    and they must override the attribute self.init_params with initial parameter values for the fitting function.
+
+    Methods
+    -------
+    fit(X, y) -> y_fit
+        Takes input values (X) and known output values (y), then performs least-squares optimization 
+        with subclass defined self.fit_function. Returns the fitted values (y_fit) 
+        and sets self.opt_params with the optimized parameters
+    transform(X) -> y_transform
+        Takes  input values (X) and uses subclass defined self.fit_function with optimized parameters 
+        (self.opt_params) to produce output values (y_transform). Requires self.fit method to run 
+        successfully first so that self.opt_params gets set
+
+    Attributes
+    ----------
+    init_params : ``tuple(?)``
+        initial parameter values for fitting function, must be set by subclass
+    opt_params : ``tuple(?)``
+        optimized parameter values for fitting function, set by self.fit method, initially set to None to indicate
+        the calibration has not been fit yet
+    """
+
+    def __init__(self):
+        """
+        initialize new _CalibrationBase instance
+        """
+        # set attributes
+        self.init_params = None
+        self.opt_params = None  # should be overridden in subclasses
+
+    @staticmethod
+    def fit_function(X, *params):
+        """
+        ! must be overridden by subclass, calling this function raises an exception !
+
+        Parameters
+        ----------
+        X : ``numpy.ndarray(float)`` or ``float``
+            input values
+        params : ``tuple(?)``
+            fitting function parameters
+
+        Returns
+        -------
+        y : ``numpy.ndarray(float)`` or ``float``
+            fitting function output
+        """
+        msg = ('_CalibrationBase: fit_function: This is the base class fitting function,'
+               ' it should have been overridden by subclass')
+        raise RuntimeError(msg)
+
+    def fit(self, X, y):
+        """
+        Takes input values (X) and known output values (y), then performs least-squares optimization 
+        with subclass defined self.fit_function. Returns the fitted values (y_fit) 
+        and sets self.opt_params with the optimized parameters
+
+        Parameters
+        ----------
+        X : ``numpy.ndarray(float)``
+            input values
+        y : ``numpy.ndarray(float)``
+            known output values
+
+        Returns
+        -------
+        y_fit : ``numpy.ndarray(float)``
+            fitted output values
+        """
+        # check that self.init_params has been set
+        if self.init_params is None:
+            msg = '_CalibrationBase: fit: self.init_params has not been set, this should have been set by subclass'
+            raise RuntimeError(msg)
+        try:
+            opt_params, cov = optimize.curve_fit(self.fit_function, X, y, maxfev=50000, p0=self.init_params)
+        except Exception as e:
+            msg = '_CalibrationBase: fit: unable to fit calibration:\n{}'
+            raise RuntimeError(msg.format(e))            
+        # if fit successful, set the optimized parameters
+        self.opt_params = opt_params
+        # then return the transformed input values (y_fit)
+        return self.transform(X)
+
+    def transform(self, X):
+        """
+        Takes  input values (X) and uses subclass defined self.fit_function with optimized parameters 
+        (self.opt_params) to produce output values (y_transform). Requires self.fit method to run 
+        successfully first so that self.opt_params gets set
+
+        Parameters
+        ----------
+        X : ``numpy.ndarray(float)`` or ``float``
+            input values
+
+        Returns
+        -------
+        y_transform : ``numpy.ndarray(float)`` or ``float``
+            fitted y values
+        """
+        # ensure that self.opt_params has been set, indicating that fitting has already occurred
+        if self.opt_params is None:
+            msg = ('_CalibrationBase: transform: self.opt_params has not been set, self.fit must be successfully'
+                   ' run prior to using this method')
+            raise RuntimeError(msg)
+        return self.fit_function(X, *self.opt_params)
+
+
+class LinearRegression(_CalibrationBase):
+    """
+    Simple test-case: linear regression
+    """
+    
+    def __init__(self, X, y):
+        """
+        Initialize a new instance of LinearRegression using a set of known x and y values, performs fitting
+        at initialization
+
+        Parameters
+        ----------
+        x : ``numpy.ndarray(float)``
+            input values
+        y : ``numpy.ndarray(float)``
+            known output values
+        """
+        # superclass __init__
+        super().__init__()
+        # set initial parameters
+        self.init_params = (0., 0.)
+        # store inputs and do fitting
+        self.X_, self.y_ = X, y
+        self.fit(self.X_, self.y_)
+
+    @staticmethod
+    def fit_function(X, m, b):
+        """
+        y = m * X + b
+
+        Parameters
+        ----------
+        X : ``numpy.ndarray(float)`` or ``float``
+            input values
+        m : ``float``
+            slope
+        b : ``float``
+            intercept
+
+        Returns
+        -------
+        y : ``numpy.ndarray(float)`` or ``float``
+            fitting function output
+        """
+        return m * X + b
+
+
+class TWCCSCalibration(_CalibrationBase):
+    """
+    TWIM CCS calibration
+    """
+
+
+'''
 class _CCSCalibrationBase:
     """
     Modular base object for making and applying CCS calibrations, not meant to be used directly
@@ -297,4 +471,4 @@ class CCSCalibrationList(_CCSCalibrationBase):
 
         # fit calibration curve
         self._fit_cal_curve(mz, dt, ref_ccs)
-
+'''
