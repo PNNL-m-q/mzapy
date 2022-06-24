@@ -19,29 +19,8 @@ Module Reference
 
 .. autofunction:: mzapy.calibration._CalibrationBase.transform
 
-.. autoclass:: mzapy.calibration.LinearRegression
+.. autoclass:: mzapy.calibration.TWCCSCalibration
 
-.. autofunction:: mzapy.calibration.LinearRegression.__init__
+.. autofunction:: mzapy.calibration.TWCCSCalibration.__init__
 
-.. autofunction:: mzapy.calibration.LinearRegression.fit_function
-
-.. code-block:: python3
-    :caption: LinearRegression demo
-
-    # construct some arbitrary linear data
-    # slope = 3, intercept = 5, with a bit of random noise added
-    import numpy as np
-    X = np.arange(1, 10.1, 0.5)
-    y = X * 3 + 5 + np.random.normal(size=X.shape)
-
-    # setup linear regression
-    from mzapy.calibration import LinearRegression
-    lr = LinearRegression(X, y)
-
-    # plot input values (X, y) and fitted trendline
-    from matplotlib import pyplot as plt
-    plt.plot(X, y, 'ko', ms=6)
-    plt.plot(X, lr.transform(X), 'b-')
-    plt.show()
-    
-
+.. autofunction:: mzapy.calibration.TWCCSCalibration.calibrated_ccs
