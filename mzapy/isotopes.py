@@ -26,6 +26,7 @@ _ELEMENT_MONOISO_MASS = {
     'S':  31.9720707,
     'K':  38.9637074,
     'Se': 79.9165196,
+    'He': 4.002603254,
 }
 
 
@@ -158,6 +159,8 @@ class MolecularFormula(collections.UserDict):
         """
         s = ''
         for e, c in self.data.items():
+            if e[0] in '0123456789':
+                e = '[' + e + ']'  # put brackets around heavy elements 
             if c != 0:  # skip 0 count elements entirely
                 if c == 1:  # no number for elements with a count of 1
                     s += e
@@ -188,14 +191,14 @@ _ADDUCT_FORMULAS = {
     '[M-2H]2-': MolecularFormula({'H': -2}),
     '[M-3H]3-': MolecularFormula({'H': -3}),
     '[M+2Na-H]+': MolecularFormula({'H': -1, 'Na': 2}),
-    '[M+2H]2+': MolecularFormula({'H': 2}),
-    '[M+3H]3+': MolecularFormula({'H': 3}),
-    '[M+4H]4+': MolecularFormula({'H': 4}),
 }
+# add protonation states from +2H to +20H
+for z in range(2, 21):
+    _ADDUCT_FORMULAS['[M+{z}H]{z}+'.format(z=z)] = MolecularFormula({'H': z})
 
 
 # define charge states for commonly observed MS ionizations
-_ADDUCT_CHRGES = {
+_ADDUCT_CHARGES = {
     '[M]+': 1,
     '[M+H]+': 1,
     '[M+Na]+': 1,
@@ -209,10 +212,10 @@ _ADDUCT_CHRGES = {
     '[M-2H]2-': 1,
     '[M-3H]3-': 1,
     '[M+2Na-H]+': 1,
-    '[M+2H]2+': 2,
-    '[M+3H]3+': 3,
-    '[M+4H]4+': 4,
 }
+# add protonation states from +2H to +20H
+for z in range(2, 21):
+    _ADDUCT_CHARGES['[M+{z}H]{z}+'.format(z=z)] = z
 
 
 def valid_ms_adduct(adduct):
@@ -263,10 +266,13 @@ def monoiso_mass(formula):
     """
     mass = 0.
     for element in formula:
-        if element not in _ELEMENT_MONOISO_MASS:
+        if element in _ELEMENT_MONOISO_MASS:
+            mass += _ELEMENT_MONOISO_MASS[element] * formula[element]
+        elif element in _HEAVY_ISOTOPE_MASS:
+            mass += _HEAVY_ISOTOPE_MASS[element] * formula[element]
+        else:
             msg = 'monoiso_mass: element "{}" not recognized'
-            raise ValueError(msg.format(element))
-        mass += _ELEMENT_MONOISO_MASS[element] * formula[element]
+            raise ValueError(msg.format(element))       
     # round the result just in case any funky floating point stuff happend with the multiplications
     return round(mass, 6)
 
@@ -292,7 +298,7 @@ def ms_adduct_mz(neutral_formula, adduct):
         msg = 'ms_adduct_mz: MS adduct "{}" not recognized'
         raise ValueError(msg.format(adduct))
     formula += _ADDUCT_FORMULAS[adduct]
-    z = _ADDUCT_CHRGES[adduct]
+    z = _ADDUCT_CHARGES[adduct]
     return monoiso_mass(formula) / z
 
 
