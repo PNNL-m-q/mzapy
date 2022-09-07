@@ -27,6 +27,7 @@ _ELEMENT_MONOISO_MASS = {
     'K':  38.9637074,
     'Se': 79.9165196,
     'He': 4.002603254,
+    'Li': 	7.016003,
 }
 
 
@@ -95,10 +96,10 @@ class MolecularFormula(collections.UserDict):
         """
         if args:
             if type(args[0]) is dict:
-                super().__init__(args[0])
+                super().__init__(args[0].copy())
             elif isinstance(args[0], MolecularFormula):
                 # if initialized using another MolecularFormula instance, then initialize using its underlying dict
-                super().__init__(args[0].data)
+                super().__init__(args[0].data.copy())
             else:
                 msg = 'MolecularFormula: __init__: initial_data must be a dict'
                 raise ValueError(msg)
@@ -188,9 +189,11 @@ _ADDUCT_FORMULAS = {
     '[M-H]-': MolecularFormula({'H': -1}),
     '[M+HCOO]-': MolecularFormula({'H': 1, 'C': 1, 'O': 2}),
     '[M+CH3COO]-': MolecularFormula({'H': 3, 'C': 2, 'O': 2}),
+    '[M+OAc]-': MolecularFormula({'H': 3, 'C': 2, 'O': 2}),
     '[M-2H]2-': MolecularFormula({'H': -2}),
     '[M-3H]3-': MolecularFormula({'H': -3}),
     '[M+2Na-H]+': MolecularFormula({'H': -1, 'Na': 2}),
+    '[M+Li]+': MolecularFormula({'Li': 1})
 }
 # add protonation states from +2H to +20H
 for z in range(2, 21):
