@@ -7,10 +7,11 @@ Dylan Ross (dylan.ross@pnnl.gov)
 """
 
 
-def _main():
-    """ main function for running all unit tests """
-    print('test main')
+import unittest
+
+from mzapy.test.isotopes import TestMolecularFormula
 
 
 if __name__ == '__main__':
-    _main()
+    # run all imported TestCases
+    unittest.main(verbosity=2)
