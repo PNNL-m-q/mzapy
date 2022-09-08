@@ -15,12 +15,14 @@ When reporting bugs, please include:
 * The version(s) of the package dependency (or dependencies) that produce the bug
 * Detailed steps to reproduce the bug
 * Any details about your local setup that might be helpful in troubleshooting
+* add the "bug" label (from menu on right when creating new issue)
 
 When proposing a new feature:
 
 * Explain in detail how it would work
 * Keep the scope as narrow as possible
 * Where possible, include code/pseudocode snippets to explain implementation or expected behavior
+* add the "enhancement" label (from menu on right when creating new issue)
 
 
 Fixing Bugs or Implementing Features
@@ -67,7 +69,7 @@ Versioning Scheme
 The version of ``mzapy`` is stored in the ``__version__`` variable in ``mzapy/__init__.py``.
 The versioning scheme follows the format *mza_version.major_version.minor_version*:
 
-* *mza version* - this is kept in lock-step with the version of the underlying MZA format
+* *mza version* - this is kept in lock-step with the version of the underlying `MZA format <https://github.com/PNNL-m-q/mza>`_
 * *major version* - increments after every time changes in the ``dev`` branch are merged into the ``main`` branch
 * *minor version* - increments after every time changes in individual bugfix/feature/docs branches are merged into the ``dev`` branch
 
@@ -80,6 +82,10 @@ The versioning scheme follows the format *mza_version.major_version.minor_versio
 
 Coding Style
 -----------------------------
+Before contributing, please look through the existing codebase as a reference for general coding style and try
+to keep your code consistent. Below are some more detailed guidelines that cover naming conventions, documentation, 
+and unit testing.
+
 
 Naming Conventions
 ******************************
@@ -101,13 +107,13 @@ Internal function/class names should be prepended with "_". Example:
 
         Parameters
         ----------
-        x : list(int)
-        y : list(int)
+        x : ``list(int)``
+        y : ``list(int)``
             lists of integers, must be same length
 
         Returns
         -------
-        sums : list(int)
+        sums : ``list(int)``
             list of pairwise sums
         """
         # uses the internal _add function
@@ -129,18 +135,18 @@ sections (if applicable) as in the following example:
         
         Parameters
         ----------
-        a : int
+        a : ``int``
             parameter a description 
-        b : float
+        b : ``float``
             parameter b description
-        c : str, optional
+        c : ``str``, optional
             parameter c description, indicate behaviors when c parameter is provided/not provided
-        d : int, default=1234
+        d : ``int``, default=1234
             parameter d description, if the default value has some significance describe that here
 
         Returns
         -------
-        x : int
+        x : ``int``
             description of return value, add more entries if the function returns more than one thing
         """
         ...
@@ -157,7 +163,7 @@ Adding Entries to Sphinx Documentation
 **********************************************
 All public-facing functions/classes should have entries in the Sphinx documentation source files in order for their 
 docstrings to be incorporated into the HTML documentation. For example, if the ``sum_pairwise`` function in the example 
-above were implemented in the ``mzalib/isotopes.py`` module, then the following entry should be added to the 
+above were implemented in the ``mzapy/isotopes.py`` module, then the following entry should be added to the 
 appropriate section in the ``docs/source/isotopes.rst`` documentation source file:
 
 .. code-block::
@@ -168,4 +174,71 @@ appropriate section in the ``docs/source/isotopes.rst`` documentation source fil
     .. autofunction :: mzapy.isotopes.sum_pairwise
 
 
+Unit Testing
+**********************************************
+Unit tests should be included for any substantial code additions, and are implemented in the
+``mzapy/test`` subpackage. Unit tests use Python's built-in 
+`unittest <https://docs.python.org/3/library/unittest.html>`_ framework. The submodules of ``mzapy/test`` mirror
+the submodules of ``mzapy``, and corresponding groups of tests are implemented as ``unittest.TestCase`` subclasses in them.
+When adding new functions or classes, create a new ``unittest.TestCase`` subclass (with descriptive name reflecting the function 
+or class being tested) in the appropriate submodule of ``mzapy/test`` 
+and implement individual tests as methods of that subclass (following the naming convention: ``test_<description_of_test>``).
+Then, in ``mzapy/test/__main__.py`` add an import statement for the new ``unittest.TestCase`` subclass, so that the newly defined tests
+get run with the rest of the defined unit tests. 
 
+.. note::
+    
+    See existing unit tests as an example for how tests are implemented and organized.
+
+
+**Example:**
+
+Say you have added a function in the ``mzapy/peaks.py`` module which performs a smoothing operation on arbitrary 1D data 
+(named ``smooth_1d``). To add unit tests for this new function, create a subclass of 
+``unittest.TestCase`` in ``mzapy/test/peaks.py``:
+
+.. code-block:: python3
+    
+    ...  # other imports 
+    from mzapy.peaks import smooth_1d
+
+    ...  # other TestCases
+
+    class TestSmooth1D(unittest.TestCase):
+        """ tests function for smoothing 1-dimensional data """
+
+        def test_smooth_empty_list(self):
+            x = []
+            with self.AssertRaises(ValueError):
+                # trying to smooth an empty list will raise a ValueError
+                x_smooth = smooth_1d(x)
+
+        def test_smooth_list_too_short(self):
+            x = [1, 2, 3, 4]
+            with self.AssertRaises(ValueError):
+                # there need to be at least 5 points to smooth the data
+                x_smooth = smooth_1d(x)
+
+        ...  # other test methods for the smooth_1d function
+    
+    ...
+    
+
+Then, you only need to import the new ``unittest.TestCase`` subclass in ``mzapy/test/__main__.py``:
+
+.. code-block:: python3
+    
+    ...  # other imports 
+    from mzapy.test.peaks import TestSmooth1D
+
+    ...
+
+
+Or, if there are already ``unittest.TestCase`` subclasses imported from that module, just add to that line:
+
+.. code-block:: python3
+    
+    ...  # other imports 
+    from mzapy.test.peaks import TestPeakFitting1D, TestLinearInterpolation1D, TestSmooth1D
+
+    ...
