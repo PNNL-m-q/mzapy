@@ -131,8 +131,6 @@ class TestMassCalcs(unittest.TestCase):
         self.assertAlmostEqual(monoiso_mass(MolecularFormula(C=131, H=229, N=39, O=31)), 2844.7542, places=4)
 
 
-
-
 if __name__ == '__main__':
     # run all TestCases
     unittest.main(verbosity=2)
