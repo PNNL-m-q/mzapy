@@ -39,9 +39,16 @@ def lerp_1d(x, y, x_min, x_max, density, threshold_y=True):
     y_interp : ``numpy.ndarray(float)``
         interpolated y values
     """
+    # x and y must be same length, and greater than 2
+    if len(x) != len(y):
+        msg = 'lerp_1d: x and y arrays must be same length'
+        raise ValueError(msg)
+    if len(x) < 2 or len(y) < 2:
+        msg = 'lerp_1d: x and y arrays must have >= 2 points for interpolation'
+        raise ValueError(msg)
     n_points = int(density * (x_max - x_min))
     if n_points < 1:
-        msg = '_lerp_1d: x axis bounds ({}, {}) too small for specified density ({})'
+        msg = 'lerp_1d: x axis bounds ({}, {}) too small for specified density ({})'
         raise ValueError(msg.format(x_min, x_max, density))
     x_interp = np.linspace(x_min, x_max, n_points)
     y_interp = interpolate.interp1d(x, y, kind='linear', fill_value='extrapolate')(x_interp)
