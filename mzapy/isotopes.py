@@ -91,7 +91,7 @@ class MolecularFormula(collections.UserDict):
 
         * ``formula = MolecularFormula()`` <- empty
         * ``formula = MolecularFormula({'C': 1, 'H': 4, 'O': 1})`` <- from dict
-        * ``formula = MolecularFormula(MolecularFormula(...))`` <- from dict
+        * ``formula = MolecularFormula(MolecularFormula(...))`` <- from MolecularFormula
         * ``formula = MolecularFormula(C=1, H=4, O=1)`` <- from kwargs
         """
         if args:

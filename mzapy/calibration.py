@@ -12,9 +12,6 @@ Dylan Ross (dylan.ross@pnnl.gov)
 """
 
 
-import math
-from multiprocessing.sharedctypes import Value
-
 from scipy import optimize
 import numpy as np
 
