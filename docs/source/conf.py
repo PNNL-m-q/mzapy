@@ -29,8 +29,12 @@ author = 'Dylan Ross'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'numpydoc'
+    'numpydoc',
+    'nbsphinx'
 ]
+
+# do not execute jupyter notebooks, they are to be treated as static source files
+nbsphinx_execute = 'never'
 
 # generate autosummary even if no references
 autosummary_generate = False
@@ -43,7 +47,6 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -55,7 +58,7 @@ html_theme = 'sphinx_rtd_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "collapse_navigation" : False
+    "collapse_navigation" : False,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

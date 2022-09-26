@@ -12,6 +12,7 @@ MZA data converter tool is available at https://github.com/PNNL-m-q/mza
    :caption: User Guide
 
    guides/installation
+   guides/technote_demo
 
 
 .. toctree::
