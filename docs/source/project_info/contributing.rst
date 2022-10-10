@@ -42,6 +42,40 @@ Please reference the documentation guidelines below.
 Changes to documentation should be submitted as pull requests.
 
 
+Creating User Guides
+**********************************************
+User guides are helpful for demonstrating how to perform complex data processing tasks. The Sphinx documentation 
+configuration in this project supports generating documentation pages directly from Jupyter notebooks (.ipynb). 
+The notebook should be created and executed separately (the build system is configured not to run notebooks, 
+they are treated as static source files), then copied into ``docs/source/guides/``. Then an entry should be added to 
+``docs/index.rst`` in the User Guides section, as in the following example:
+
+.. code-block::
+
+    .. toctree::
+        :maxdepth: 2
+        :caption: User Guide
+
+        guides/installation
+        guides/technote_demo
+        guides/my_new_user_guide
+
+
+In this example, the entry ``guides/my_new_user_guide`` would refer to the Jupyter notebook file 
+``docs/source/guides/my_new_user_guide.ipynb``. In order to retain the correct section/sub-section structure of 
+the documentation, the notebook must contain independent markdown cells for heading levels 1 and 2 which will populate
+the table of contents in the left pane of the generated documentation. The notebook should start with an independent markdown cell 
+containg the level 1 heading corresponding to the short title of the guide. Sub-sections of the guide should be denoted by independent
+markdown cells containing the level 2 headings corresponding to subsection titles.
+
+.. code-block::
+    :caption: Jupyter notebook markdown heading levels
+
+    # heading level 1
+
+    ## heading level 2
+
+
 Submitting a Pull Request
 -------------------------
 
