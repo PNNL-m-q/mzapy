@@ -322,7 +322,7 @@ def plot_atd(dt, i,
 
 
 def add_peaks_to_plot(ax, peak_means, peak_heights, peak_fwhms, 
-                      c='r', add_text_lbl=False, x_units=''):
+                      c='r', add_text_lbl=False, x_units='', fontsize=6):
     """
     annotate an existing plot with peaks showing their means, heights, and FWHMs as crosses, can optionally add a 
     text label with the format {mean} +/- {FWHM / 2} {x_units} ({height})
@@ -341,6 +341,8 @@ def add_peaks_to_plot(ax, peak_means, peak_heights, peak_fwhms,
         whether to annotate peaks with a text label, format: {mean} +/- {FWHM / 2} {x_units} ({height})
     x_units : ``str``, default=''
         when peaks are annotated with text labels, add specified units to the part of the label with the mean and FWHM
+    fontsize : ``int``, default=6
+        when peaks are annotated with text labels, specify font size for text labels
     """
     for pk_mean, pk_height, pk_width in zip(peak_means, peak_heights, peak_fwhms):
         # annotate with a cross showing the peak mean, height, and FWHM
@@ -351,7 +353,7 @@ def add_peaks_to_plot(ax, peak_means, peak_heights, peak_fwhms,
         if add_text_lbl:
             s = '{:.1e} +/- {:.1e} {}\n{:.1e}'.format(pk_mean, pk_width, x_units, pk_height)
             # add some text with the peak info
-            ax.text(pk_mean + pk_width / 2, 0.75 * pk_height, s, size=6, c=c)
+            ax.text(pk_mean + pk_width / 2, 0.75 * pk_height, s, size=fontsize, c=c)
 
 
 def plot_tw_ccs_calibration(calibration, figname=None):

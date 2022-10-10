@@ -1,3 +1,6 @@
+# No MZA files...?
+*.mza
+
 .DS_Store
 
 # Byte-compiled / optimized / DLL files
