@@ -42,6 +42,8 @@ Module Reference
 .. autofunction:: mzapy.MZA.collect_ms1_arrays_by_rt_dt
 
 .. autofunction:: mzapy.MZA.collect_ms1_df_by_rt
+    
+.. autofunction:: mzapy.MZA.collect_dda_ms2_df_by_rt
 
 .. autofunction:: mzapy.MZA.collect_ms1_df_by_rt_dt
 

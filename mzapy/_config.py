@@ -11,6 +11,7 @@ Dylan Ross (dylan.ross@pnnl.gov)
 _MZA_VERSIONS_SUPPORTED = [
     'old',
     'new',
+    'thermo-orbi',
 ]
 
 
@@ -25,4 +26,11 @@ _ALL_METADATA_HEADERS = [
 # specify metadata headers to cache in memory
 _CACHE_METADATA_HEADERS = [
     'Scan', 'MSLevel', 'RetentionTime', 'IonMobilityFrame', 'IonMobilityBin', 'IonMobilityTime'
+]
+
+
+# metadata headers useful for thermo orbi data
+_THERMO_ORBI_METADATA_HEADERS = [
+    'Scan', 'MSLevel', 'Polarity', 'Fragmentation', 'RetentionTime', 'PrecursorScan', 'PrecursorMonoisotopicMz', 
+    'IsolationWindowTargetMz', 'IsolationWindowWidth', 'IsolationWindowOffset',
 ]

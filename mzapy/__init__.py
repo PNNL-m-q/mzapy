@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.5.0'
+__version__ = '1.5.1.dylanhross_0'
 
 
 import queue
@@ -24,7 +24,7 @@ import hdf5plugin
 import numpy as np
 import pandas as pd
 
-from mzapy._config import _MZA_VERSIONS_SUPPORTED,  _ALL_METADATA_HEADERS, _CACHE_METADATA_HEADERS
+from mzapy._config import _MZA_VERSIONS_SUPPORTED,  _ALL_METADATA_HEADERS, _CACHE_METADATA_HEADERS, _THERMO_ORBI_METADATA_HEADERS
 from mzapy._util import _UpdatingProgressBar
 
 
@@ -70,7 +70,7 @@ class MZA():
         mapping ?
     """
 
-    def __init__(self, h5_file, cache_metadata_headers=_CACHE_METADATA_HEADERS, ms1lvl=1, io_threads=8, 
+    def __init__(self, h5_file, cache_metadata_headers=None, ms1lvl=1, io_threads=8, 
                  cache_scan_data=False, mza_version='new'):
         """
         init a new MZA instance using the path to the source HDF5 file
@@ -79,9 +79,9 @@ class MZA():
         ----------
         h5_file : ``str``
             file name (and optionally path to) the source HDF5 file
-        cache_metadata_headers : ``list(str)`` or ``str``, default=_CACHE_METADATA_HEADERS
+        cache_metadata_headers : ``list(str)`` or ``str``, optional
             specify which metadata headers to cache in memory for faster access, [] to cache none, 'all' to cache all,
-            by default the set defined in _config._CACHE_METADATA_HEADERS is used
+            None to use default, different based on mza_version value
         ms1lvl : ``int``, default=1
             mslvl value corresponding to MS1 data (1 if MSMS data is present, 0 other times)
         io_threads : ``int``, default=8
@@ -90,7 +90,8 @@ class MZA():
             whether to cache extracted scan data for faster subsequent access
         mza_version : ``str``, default='new'
             temporary measure for indicating whether the the scan indexing needs to account for partitioned
-            scan data ('new') or not ('old'). Again, this is only temporary as at some point the mza version
+            scan data ('new') or not ('old'). There is also an option for Thermo orbitrap data ('thermo-orbi'). 
+            Again, this is only temporary as at some point the mza version
             will be encoded as metadata into the file and this accommodation can be made automatically.
         """
         # validate and store the mza version
@@ -103,7 +104,12 @@ class MZA():
         # preload some of the metadata into memory for much faster access later on
         self._metadata = {}
         # check if cache_metadata_headers was set to 'all'
-        cache_metadata_headers = _ALL_METADATA_HEADERS if cache_metadata_headers == 'all' else cache_metadata_headers
+        if cache_metadata_headers is None:
+            cache_metadata_headers = {'old': _CACHE_METADATA_HEADERS, 
+                                      'new': _CACHE_METADATA_HEADERS,  
+                                      'thermo-orbi': _THERMO_ORBI_METADATA_HEADERS}[mza_version]
+        elif cache_metadata_headers == 'all':
+            cache_metadata_headers = _ALL_METADATA_HEADERS
         for hdr in cache_metadata_headers:
             self._metadata[hdr] = self.h5['Metadata'][hdr][()]
         # deal with changes to mza format 'new' version
@@ -115,9 +121,16 @@ class MZA():
             self._idx_to_path = {}
             for i, p in zip(self.metadata('Scan'), self.metadata('MzaPath')):
                 self._idx_to_path[i] = p.decode()
-        # preload the full m/z array into memory, it potentially gets indexed quite a few times
-        self.mz_full = self.h5['Full_mz_array'][()]
-        self.min_mz, self.max_mz = min(self.mz_full), max(self.mz_full)
+        if self.mza_version == 'thermo-orbi':
+            # no full mz array
+            self.mz_full = None
+            # assume the first scan is a full scan, get the bounds from there
+            mz = self.h5['Arrays_mz/1'][:]
+            self.min_mz, self.max_mz = min(mz), max(mz)
+        else:
+            # preload the full m/z array into memory, it potentially gets indexed quite a few times
+            self.mz_full = self.h5['Full_mz_array'][()]
+            self.min_mz, self.max_mz = min(self.mz_full), max(self.mz_full)
         # set mappings between ims frame and ms1 frame
         self._ms1lvl = ms1lvl
         self._get_ms1_frames()
@@ -373,6 +386,11 @@ class MZA():
         """
         path = '{}'.format(self._idx_to_path[scan_idx]) if self.mza_version == 'new' else ''
         full_index = 'Arrays_mzbin{}/{}'.format(path, scan_idx)
+        index = {
+            'thermo-orbi': lambda si: 'Arrays_mz/{}'.format(si),
+            'new': lambda si:  'Arrays_mzbin/{}'.format(si),
+            'old': lambda si: 'Arrays_mzbin{}/{}'.format(si, si),
+        }[self.mza_version](scan_idx)
         if bin_idx_min is None and bin_idx_max is None:
             # full scan data
             return self.h5[full_index][()]
@@ -491,13 +509,61 @@ class MZA():
             ms1_frame = self.frame_idx2ms1_frame[frame]
             mzbins, intensities = multi_scan_data[idx]
             for mzbin, intensity in zip(mzbins, intensities):
+                # convert mzbin to mz if needed
+                mz = mzbin if self.mza_version == 'thermo-orbi' else self.mz_full[mzbin]
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, ms1_frame])
+                    data.append([mzbin, mz, intensity, rt, ms1_frame])
                 else:
-                    mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
                         data.append([mzbin, mz, intensity, rt, ms1_frame])
         return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'frame'])
+
+    def collect_dda_ms2_df_by_rt(self, frag_type, pre_mz, pre_mz_tol, rt_min, rt_max, mz_bounds=None, verbose=False):
+        """
+        collects MS2 data within RT range and select by fragmentation type and precursor mass, 
+        IM dimension is collapsed/ignored
+
+        Parameters
+        ----------
+        frag_type : ``str``
+            fragmentation type ('HCD' or 'CID')
+        pre_mz : ``float``
+            m/z for selected precursor
+        pre_mz_tol : ``float``
+            tolerance for selected precursor m/z
+        rt_min : ``float``
+            lower bound of RT window to select data from
+        rt_max : ``float``
+            upper bound of RT window to select data from
+        mz_bounds : ``tuple(float, float)``, optional
+            mz_min, mz_max
+        verbose : ``bool``, default=False
+            print information about the progress
+
+        Returns
+        -------
+        data : ``pandas.DataFrame``
+            data frame with columns mzbin, mz, intensity, rt, frame
+        """
+        # determine the indices to select
+        sel = (self.metadata('Fragmentation') == frag_type) & \
+              (np.abs(self.metadata('PrecursorMonoisotopicMz') - pre_mz) <= pre_mz_tol) & \
+              (self.mslvl == 2) & (self.imb == 0) & (rt_min <= self.rt) & (self.rt <= rt_max)
+        multi_scan_data = self._read_multi_scan_data(self.idx[sel], verbose) 
+        if mz_bounds is not None:
+            mz_min, mz_max = mz_bounds
+        data = []
+        for idx, rt in zip(self.idx[sel], self.rt[sel]):
+            mzbins, intensities = multi_scan_data[idx]
+            for mzbin, intensity in zip(mzbins, intensities):
+                # convert mzbin to mz if needed
+                mz = mzbin if self.mza_version == 'thermo-orbi' else self.mz_full[mzbin]
+                if mz_bounds is None:
+                    data.append([mz, intensity, rt])
+                else:
+                    if mz >= mz_min and mz <= mz_max:
+                        data.append([mz, intensity, rt])
+        return pd.DataFrame(data, columns=['mz', 'intensity', 'rt'])
 
     def collect_ms1_df_by_rt_dt(self, rt_min, rt_max, dt_min, dt_max, mz_bounds=None, verbose=False):
         """
@@ -533,12 +599,13 @@ class MZA():
                                            self.metadata('IonMobilityFrame')[sel]):
             mzbins, intensities = multi_scan_data[idx]
             for mzbin, intensity in zip(mzbins, intensities):
+                # convert mzbin to mz if needed
+                mz = mzbin if self.mza_version == 'thermo-orbi' else self.mz_full[mzbin]
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
+                    data.append([mzbin, mz, intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
                 else:
-                    mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
-                        data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
+                        data.append([mzbin, mz, intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
 
         return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'dt', 'frame'])
 
