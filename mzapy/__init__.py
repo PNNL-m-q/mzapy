@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.5.1.dylanhross_1'
+__version__ = '1.5.1.dylanhross_2'
 
 
 import queue
@@ -615,7 +615,7 @@ class MZA():
         Returns
         -------
         data : ``pandas.DataFrame``
-            data frame with columns mzbin, mz, intensity, rt, frame
+            data frame with columns mzbin, mz, intensity, rt
         """
         # determine the indices to select
         sel = (self.mslvl == 2) & (self.imb == 0) & (rt_min <= self.rt) & (self.rt <= rt_max)
@@ -625,16 +625,15 @@ class MZA():
         data = []
         for idx, msl, rt, frame in zip(self.idx[sel], self.mslvl[sel], self.rt[sel], 
                                        self.metadata('IonMobilityFrame')[sel]):
-            ms1_frame = self.frame_idx2ms1_frame[frame]
             mzbins, intensities = multi_scan_data[idx]
             for mzbin, intensity in zip(mzbins, intensities):
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, ms1_frame])
+                    data.append([mzbin, self.mz_full[mzbin], intensity, rt])
                 else:
                     mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
-                        data.append([mzbin, mz, intensity, rt, ms1_frame])
-        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'frame'])
+                        data.append([mzbin, mz, intensity, rt])
+        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt'])
 
     def collect_ms2_df_by_rt_dt(self, rt_min, rt_max, dt_min, dt_max, mz_bounds=None, verbose=False):
         """
@@ -658,7 +657,7 @@ class MZA():
         Returns
         -------
         data : ``pandas.DataFrame``
-            data frame with columns mzbin, mz, intensity, rt, dt, frame
+            data frame with columns mzbin, mz, intensity, rt, dt
         """
         sel = (self.mslvl == 2) & (self.imb != 0) & (rt_min <= self.rt) & \
               (self.rt <= rt_max) & (dt_min <= self.dt) & (self.dt <= dt_max)
@@ -671,12 +670,12 @@ class MZA():
             mzbins, intensities = multi_scan_data[idx]
             for mzbin, intensity in zip(mzbins, intensities):
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
+                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt])
                 else:
                     mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
-                        data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
-        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'dt', 'frame'])
+                        data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt])
+        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'dt'])
 
     def collect_ms2_arrays_by_rt(self, rt_min, rt_max, mz_bounds=None):
         """
@@ -713,10 +712,10 @@ class MZA():
             lower RT bound
         rt_max : ``float``
             upper RT bound
-        rt_min : ``float``
-            lower RT bound
-        rt_max : ``float``
-            upper RT bound
+        dt_min : ``float``
+            lower bound of DT window to select data from
+        dt_max : ``float``
+            upper bound of DT window to select data from
         mz_bounds : ``tuple(float)``, optional
             (lower, upper) m/z bounds, filters data after extraction so no effect on extraction time
         verbose : ``bool``, default=False
@@ -776,10 +775,10 @@ class MZA():
             lower RT bound
         rt_max : ``float``
             upper RT bound
-        rt_min : ``float``
-            lower RT bound
-        rt_max : ``float``
-            upper RT bound
+        dt_min : ``float``
+            lower bound of DT window to select data from
+        dt_max : ``float``
+            upper bound of DT window to select data from
         mz_bounds : ``tuple(float)``, optional
             (lower, upper) m/z bounds, filters data after extraction so no effect on extraction time
         verbose : ``bool``, default=False
