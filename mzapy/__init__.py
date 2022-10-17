@@ -284,6 +284,11 @@ class MZA():
         return max(self.metadata('RetentionTime'))
 
     @property
+    def imf(self):
+        """ ion mobility frame of all scans """
+        return self.metadata('IonMobilityFrame')
+
+    @property
     def imb(self):
         """ ion mobility bin of all scans """
         return self.metadata('IonMobilityBin')
