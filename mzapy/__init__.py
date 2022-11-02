@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.5.1.dylanhross_3'
+__version__ = '1.5.1.dylanhross_4'
 
 
 import queue
@@ -596,7 +596,6 @@ class MZA():
         ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
         return ms1_mz, ms1_int
 
-
     def collect_ms2_df_by_rt(self, rt_min, rt_max, mz_bounds=None, verbose=False):
         """
         collects MS2 data within RT ranges, IM dimension is collapsed/ignored
@@ -801,7 +800,7 @@ class MZA():
         ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
         return ms1_mz, ms1_int
 
-    def collect_atd_arrays_by_rt_mz(self, mz_min, mz_max, rt_min, rt_max, dt_bounds=None, verbose=False):
+    def collect_atd_arrays_by_rt_mz(self, mz_min, mz_max, rt_min, rt_max, dt_bounds=None, mslvl=1, verbose=False):
         """
         loads ATD (dt, intensity) as arrays for target mass within an RT window
 
@@ -817,6 +816,8 @@ class MZA():
             upper RT bound
         dt_bounds : ``tuple(float)``, optional
             (lower, upper) drift bounds, tightening DT bounds around area of interest reduces extraction time
+        mslvl : ``int``, default=1
+            MS level to select from 
         verbose : ``bool``, default=False
             print information about the progress
 
@@ -831,9 +832,12 @@ class MZA():
             dt_min, dt_max = dt_bounds
         else:
             dt_min, dt_max = self.min_dt, self.max_dt
-        ms1_df = self.collect_ms1_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
-                                              mz_bounds=(mz_min, mz_max), verbose=verbose)
-        df = ms1_df.groupby('dt').intensity.sum()
+        if mslvl == 1:
+            df = self.collect_ms1_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                            mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('dt').intensity.sum()
+        elif mslvl == 2:
+            df = self.collect_ms2_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                            mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('dt').intensity.sum()
         atd_dt, atd_int = df.index.to_numpy(), df.to_numpy()
         return atd_dt, atd_int
 
