@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.5.1.dylanhross_2'
+__version__ = '1.5.1.dylanhross_3'
 
 
 import queue
@@ -734,7 +734,7 @@ class MZA():
         ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
         return ms1_mz, ms1_int
 
-    def collect_xic_arrays_by_mz(self, mz_min, mz_max, rt_bounds=None, verbose=False):
+    def collect_xic_arrays_by_mz(self, mz_min, mz_max, rt_bounds=None, mslvl=1, verbose=False):
         """
         loads XIC (retention time, intensity) as arrays for m/z range, *ignoring DT if present*
 
@@ -746,6 +746,8 @@ class MZA():
             upper m/z bound
         rt_bounds : ``tuple(float, float)``, optional
             (lower, upper) RT bounds
+        mslvl : ``int``, default=1
+            MS level to select from
         verbose : ``bool``, default=False
             print information about the progress
 
@@ -760,8 +762,10 @@ class MZA():
             rt_min, rt_max = rt_bounds
         else:
             rt_min, rt_max = self.min_rt, self.max_rt
-        ms1_df = self.collect_ms1_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose)
-        df = ms1_df.groupby('rt').intensity.sum()
+        if mslvl == 1: 
+            df = self.collect_ms1_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
+        elif mslvl ==2 :
+            df = self.collect_ms2_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
         xic_rt, xic_int = df.index.to_numpy(), df.to_numpy()
         return xic_rt, xic_int
 
@@ -833,7 +837,7 @@ class MZA():
         atd_dt, atd_int = df.index.to_numpy(), df.to_numpy()
         return atd_dt, atd_int
 
-    def collect_xic_arrays_by_mz_dt(self, mz_min, mz_max, dt_min, dt_max, verbose=False):
+    def collect_xic_arrays_by_mz_dt(self, mz_min, mz_max, dt_min, dt_max, rt_bounds=None, mslvl=1, verbose=False):
         """
         loads XIC (RT, intensity) as arrays for target mass within a DT window
 
@@ -847,6 +851,10 @@ class MZA():
             lower DT bound
         dt_max : ``float``
             upper DT bound
+        rt_bounds : ``tuple(float, float)``, optional
+            (lower, upper) RT bounds
+        mslvl : ``int``, default=1
+            MS level to select from
         verbose : ``bool``, default=False
             print information about the progress
 
@@ -857,9 +865,16 @@ class MZA():
         xic_int : ``numpy.ndarray(int)``
             intensity component of XIC
         """
-        ms1_df = self.collect_ms1_df_by_rt_dt(self.min_rt, self.max_rt, dt_min, dt_max, 
-                                              mz_bounds=(mz_min, mz_max), verbose=verbose)
-        df = ms1_df.groupby('rt').intensity.sum()
+        if rt_bounds is not None:
+            rt_min, rt_max = rt_bounds
+        else:
+            rt_min, rt_max = self.min_rt, self.max_rt
+        if mslvl == 1:
+            df = self.collect_ms1_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                              mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
+        elif mslvl == 2:
+            df = self.collect_ms2_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                              mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
         xic_rt, xic_int = df.index.to_numpy(), df.to_numpy()
         return xic_rt, xic_int
 
