@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.5.0'
+__version__ = '1.5.1.dylanhross_5'
 
 
 import queue
@@ -284,6 +284,11 @@ class MZA():
         return max(self.metadata('RetentionTime'))
 
     @property
+    def imf(self):
+        """ ion mobility frame of all scans """
+        return self.metadata('IonMobilityFrame')
+
+    @property
     def imb(self):
         """ ion mobility bin of all scans """
         return self.metadata('IonMobilityBin')
@@ -539,7 +544,6 @@ class MZA():
                     mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
                         data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
-
         return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'dt', 'frame'])
 
     def collect_ms1_arrays_by_rt(self, rt_min, rt_max, mz_bounds=None):
@@ -592,7 +596,144 @@ class MZA():
         ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
         return ms1_mz, ms1_int
 
-    def collect_xic_arrays_by_mz(self, mz_min, mz_max, rt_bounds=None, verbose=False):
+    def collect_ms2_df_by_rt(self, rt_min, rt_max, mz_bounds=None, verbose=False):
+        """
+        collects MS2 data within RT ranges, IM dimension is collapsed/ignored
+
+        Parameters
+        ----------
+        rt_min : ``float``
+            lower bound of RT window to select data from
+        rt_max : ``float``
+            upper bound of RT window to select data from
+        mz_bounds : ``tuple(float, float)``, optional
+            mz_min, mz_max
+        verbose : ``bool``, default=False
+            print information about the progress
+
+        Returns
+        -------
+        data : ``pandas.DataFrame``
+            data frame with columns mzbin, mz, intensity, rt
+        """
+        # determine the indices to select
+        sel = (self.mslvl == 2) & (self.imb == 0) & (rt_min <= self.rt) & (self.rt <= rt_max)
+        multi_scan_data = self._read_multi_scan_data(self.idx[sel], verbose) 
+        if mz_bounds is not None:
+            mz_min, mz_max = mz_bounds
+        data = []
+        for idx, msl, rt, frame in zip(self.idx[sel], self.mslvl[sel], self.rt[sel], 
+                                       self.metadata('IonMobilityFrame')[sel]):
+            mzbins, intensities = multi_scan_data[idx]
+            for mzbin, intensity in zip(mzbins, intensities):
+                if mz_bounds is None:
+                    data.append([mzbin, self.mz_full[mzbin], intensity, rt])
+                else:
+                    mz = self.mz_full[mzbin]
+                    if mz >= mz_min and mz <= mz_max:
+                        data.append([mzbin, mz, intensity, rt])
+        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt'])
+
+    def collect_ms2_df_by_rt_dt(self, rt_min, rt_max, dt_min, dt_max, mz_bounds=None, verbose=False):
+        """
+        collects MS2 data within RT and DT ranges
+
+        Parameters
+        ----------
+        rt_max : ``float``
+            lower bound of RT window to select data from
+        rt_max : ``float``
+            upper bound of RT window to select data from
+        dt_min : ``float``
+            lower bound of DT window to select data from
+        dt_max : ``float``
+            upper bound of DT window to select data from
+        mz_bounds : ``tuple(float, float)``, optional
+            mz_min, mz_max
+        verbose : ``bool``, default=False
+            print information about the progress
+
+        Returns
+        -------
+        data : ``pandas.DataFrame``
+            data frame with columns mzbin, mz, intensity, rt, dt
+        """
+        sel = (self.mslvl == 2) & (self.imb != 0) & (rt_min <= self.rt) & \
+              (self.rt <= rt_max) & (dt_min <= self.dt) & (self.dt <= dt_max)
+        multi_scan_data = self._read_multi_scan_data(self.idx[sel], verbose)
+        if mz_bounds is not None:
+            mz_min, mz_max = mz_bounds
+        data = []  
+        for idx, msl, rt, dt, frame in zip(self.idx[sel], self.mslvl[sel], self.rt[sel], self.dt[sel],
+                                           self.metadata('IonMobilityFrame')[sel]):
+            mzbins, intensities = multi_scan_data[idx]
+            for mzbin, intensity in zip(mzbins, intensities):
+                if mz_bounds is None:
+                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt])
+                else:
+                    mz = self.mz_full[mzbin]
+                    if mz >= mz_min and mz <= mz_max:
+                        data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt])
+        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'dt'])
+
+    def collect_ms2_arrays_by_rt(self, rt_min, rt_max, mz_bounds=None):
+        """
+        loads MS2 spectrum (m/z, intensity) as arrays for m/z and RT range, *ignoring DT if present*
+
+        Parameters
+        ----------
+        rt_min : ``float``
+            lower RT bound
+        rt_max : ``float``
+            upper RT bound
+        mz_bounds : ``tuple(float)``, optional
+            (lower, upper) m/z bounds, filters data after extraction so no effect on extraction time
+
+        Returns
+        -------
+        ms1_mz : ``numpy.ndarray(float)``
+            m/z component of MS1 spectrum
+        ms1_int : ``numpy.ndarray(int)``
+            intensity component of MS1 spectrum
+        """
+        ms1_df = self.collect_ms2_df_by_rt(rt_min, rt_max, mz_bounds=mz_bounds)
+        df = ms1_df.groupby('mz').intensity.sum()
+        ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
+        return ms1_mz, ms1_int
+
+    def collect_ms2_arrays_by_rt_dt(self, rt_min, rt_max, dt_min, dt_max, mz_bounds=None, verbose=False):
+        """
+        loads MS2 spectrum (m/z, intensity) as arrays for m/z, RT, and DT range
+
+        Parameters
+        ----------
+        rt_min : ``float``
+            lower RT bound
+        rt_max : ``float``
+            upper RT bound
+        dt_min : ``float``
+            lower bound of DT window to select data from
+        dt_max : ``float``
+            upper bound of DT window to select data from
+        mz_bounds : ``tuple(float)``, optional
+            (lower, upper) m/z bounds, filters data after extraction so no effect on extraction time
+        verbose : ``bool``, default=False
+            print information about the progress
+
+        Returns
+        -------
+        ms1_mz : ``numpy.ndarray(float)``
+            m/z component of MS1 spectrum
+        ms1_int : ``numpy.ndarray(int)``
+            intensity component of MS1 spectrum
+        """
+        ms1_df = self.collect_ms2_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                              mz_bounds=mz_bounds, verbose=verbose)
+        df = ms1_df.groupby('mz').intensity.sum()
+        ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
+        return ms1_mz, ms1_int
+
+    def collect_xic_arrays_by_mz(self, mz_min, mz_max, rt_bounds=None, mslvl=1, verbose=False):
         """
         loads XIC (retention time, intensity) as arrays for m/z range, *ignoring DT if present*
 
@@ -604,6 +745,8 @@ class MZA():
             upper m/z bound
         rt_bounds : ``tuple(float, float)``, optional
             (lower, upper) RT bounds
+        mslvl : ``int``, default=1
+            MS level to select from
         verbose : ``bool``, default=False
             print information about the progress
 
@@ -618,8 +761,10 @@ class MZA():
             rt_min, rt_max = rt_bounds
         else:
             rt_min, rt_max = self.min_rt, self.max_rt
-        ms1_df = self.collect_ms1_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose)
-        df = ms1_df.groupby('rt').intensity.sum()
+        if mslvl == 1: 
+            df = self.collect_ms1_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
+        elif mslvl ==2 :
+            df = self.collect_ms2_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
         xic_rt, xic_int = df.index.to_numpy(), df.to_numpy()
         return xic_rt, xic_int
 
@@ -633,10 +778,10 @@ class MZA():
             lower RT bound
         rt_max : ``float``
             upper RT bound
-        rt_min : ``float``
-            lower RT bound
-        rt_max : ``float``
-            upper RT bound
+        dt_min : ``float``
+            lower bound of DT window to select data from
+        dt_max : ``float``
+            upper bound of DT window to select data from
         mz_bounds : ``tuple(float)``, optional
             (lower, upper) m/z bounds, filters data after extraction so no effect on extraction time
         verbose : ``bool``, default=False
@@ -655,7 +800,7 @@ class MZA():
         ms1_mz, ms1_int = df.index.to_numpy(), df.to_numpy()
         return ms1_mz, ms1_int
 
-    def collect_atd_arrays_by_rt_mz(self, mz_min, mz_max, rt_min, rt_max, dt_bounds=None, verbose=False):
+    def collect_atd_arrays_by_rt_mz(self, mz_min, mz_max, rt_min, rt_max, dt_bounds=None, mslvl=1, verbose=False):
         """
         loads ATD (dt, intensity) as arrays for target mass within an RT window
 
@@ -671,6 +816,8 @@ class MZA():
             upper RT bound
         dt_bounds : ``tuple(float)``, optional
             (lower, upper) drift bounds, tightening DT bounds around area of interest reduces extraction time
+        mslvl : ``int``, default=1
+            MS level to select from 
         verbose : ``bool``, default=False
             print information about the progress
 
@@ -685,13 +832,16 @@ class MZA():
             dt_min, dt_max = dt_bounds
         else:
             dt_min, dt_max = self.min_dt, self.max_dt
-        ms1_df = self.collect_ms1_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
-                                              mz_bounds=(mz_min, mz_max), verbose=verbose)
-        df = ms1_df.groupby('dt').intensity.sum()
+        if mslvl == 1:
+            df = self.collect_ms1_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                            mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('dt').intensity.sum()
+        elif mslvl == 2:
+            df = self.collect_ms2_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                            mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('dt').intensity.sum()
         atd_dt, atd_int = df.index.to_numpy(), df.to_numpy()
         return atd_dt, atd_int
 
-    def collect_xic_arrays_by_mz_dt(self, mz_min, mz_max, dt_min, dt_max, verbose=False):
+    def collect_xic_arrays_by_mz_dt(self, mz_min, mz_max, dt_min, dt_max, rt_bounds=None, mslvl=1, verbose=False):
         """
         loads XIC (RT, intensity) as arrays for target mass within a DT window
 
@@ -705,6 +855,10 @@ class MZA():
             lower DT bound
         dt_max : ``float``
             upper DT bound
+        rt_bounds : ``tuple(float, float)``, optional
+            (lower, upper) RT bounds
+        mslvl : ``int``, default=1
+            MS level to select from
         verbose : ``bool``, default=False
             print information about the progress
 
@@ -715,9 +869,16 @@ class MZA():
         xic_int : ``numpy.ndarray(int)``
             intensity component of XIC
         """
-        ms1_df = self.collect_ms1_df_by_rt_dt(self.min_rt, self.max_rt, dt_min, dt_max, 
-                                              mz_bounds=(mz_min, mz_max), verbose=verbose)
-        df = ms1_df.groupby('rt').intensity.sum()
+        if rt_bounds is not None:
+            rt_min, rt_max = rt_bounds
+        else:
+            rt_min, rt_max = self.min_rt, self.max_rt
+        if mslvl == 1:
+            df = self.collect_ms1_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                              mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
+        elif mslvl == 2:
+            df = self.collect_ms2_df_by_rt_dt(rt_min, rt_max, dt_min, dt_max, 
+                                              mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
         xic_rt, xic_int = df.index.to_numpy(), df.to_numpy()
         return xic_rt, xic_int
 

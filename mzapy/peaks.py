@@ -146,7 +146,8 @@ def find_peaks_1d_localmax(x, y, min_rel_height, min_abs_height, fwhm_min, fwhm_
         widths (FWHM) for peaks
     """
     # convert minimum distance (in units of x) to bins
-    bin_width = x[1] - x[0]
+    # compute average bin width
+    bin_width = (x[-1] - x[0]) / len(x)
     min_bins = int(min_dist / bin_width)
     min_bins = 1 if min_bins < 1 else min_bins
     fwhm_min_bins, fwhm_max_bins = int(fwhm_min / bin_width), int(fwhm_max / bin_width)
