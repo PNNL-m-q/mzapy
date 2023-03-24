@@ -83,6 +83,33 @@ A ``MolecularFormula`` may be initialized in one of four ways:
     # octane.__str__ -> "C8H18"
 
 
+Elements
+--------
+The following table summarizes the currently defined elements in the ``mzapy.isotopes`` module, 
+along with the exact masses of their most abundant isotope (source: https://www.unimod.org/masses.html)
+
+============  ================
+ Element      Exact Mass   
+============  ================
+H               1.007825035
+D               2.014101779 
+C               12.0000000
+N               14.003074
+O               15.99491463
+Na              22.9897677
+P               30.973762
+S               31.9720707
+K               38.9637074
+Se              79.9165196
+He              4.002603254
+Li 	            7.016003
+============  ================
+
+
+Additional elements may be defined by adding entries to the ``mzapy.isotopes._ELEMENT_MONOISO_MASS`` 
+dictionary.
+
+
 MS Adducts
 ----------
 Molecular formulas and m/z values can be computed for various MS adducts using :func:`mzapy.isotopes.ms_adduct_formula` and 

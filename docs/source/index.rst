@@ -1,6 +1,6 @@
 mzapy |mzapy_version|
 =======================================
-A Python package that provides an interface to raw MS data in the MZA format.
+A Python package that provides an interface to unprocessed MS data in the MZA format.
 
 Source code is available at https://github.com/PNNL-m-q/mzapy
 

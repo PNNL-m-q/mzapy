@@ -1,5 +1,5 @@
 # mzapy
-A Python package that provides an interface to raw MS data in the MZA format.
+A Python package that provides an interface to unprocessed MS data in the MZA format.
 
 #### Contributors:
 - Dylan Ross (dylan.ross@pnnl.gov)
