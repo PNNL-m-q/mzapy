@@ -13,20 +13,29 @@ CCS for TWIM measurements, method based on:
 Module Reference
 ---------------------------------------
 
-.. autoclass:: mzapy.calibration._CalibrationBase
+Base Object
+***************************************
 
-.. autofunction:: mzapy.calibration._CalibrationBase.fit
+.. autoclass :: mzapy.calibration._CalibrationBase
 
-.. autofunction:: mzapy.calibration._CalibrationBase.transform
+.. autofunction :: mzapy.calibration._CalibrationBase.fit
 
-.. autoclass:: mzapy.calibration.MassCalibration
+.. autofunction :: mzapy.calibration._CalibrationBase.transform
 
-.. autofunction:: mzapy.calibration.MassCalibration.__init__
+Mass Calibration
+***************************************
 
-.. autofunction:: mzapy.calibration.MassCalibration.calibrated_mass
+.. autoclass :: mzapy.calibration.MassCalibration
 
-.. autoclass:: mzapy.calibration.TWCCSCalibration
+.. autofunction :: mzapy.calibration.MassCalibration.__init__
 
-.. autofunction:: mzapy.calibration.TWCCSCalibration.__init__
+.. autofunction :: mzapy.calibration.MassCalibration.calibrated_mass
 
-.. autofunction:: mzapy.calibration.TWCCSCalibration.calibrated_ccs
+TWIMS CCS Calibration
+***************************************
+
+.. autoclass :: mzapy.calibration.TWCCSCalibration
+
+.. autofunction :: mzapy.calibration.TWCCSCalibration.__init__
+
+.. autofunction :: mzapy.calibration.TWCCSCalibration.calibrated_ccs

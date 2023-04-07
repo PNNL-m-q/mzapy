@@ -116,6 +116,9 @@ The images below are the last two plots from the above code example.
 Module Reference
 ---------------------------------------
 
+Viewing Data
+***************************************
+
 .. autofunction :: mzapy.view.plot_spectrum
 
 .. autofunction :: mzapy.view.plot_chrom
@@ -125,5 +128,11 @@ Module Reference
 .. autofunction :: mzapy.view.add_peaks_to_plot
 
 .. autofunction :: mzapy.view._setup_and_save_or_show_plot
+
+
+Calibration Plots
+***************************************
+
+.. autofunction :: mzapy.view.plot_mass_calibration
 
 .. autofunction :: mzapy.view.plot_tw_ccs_calibration

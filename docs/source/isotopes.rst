@@ -156,9 +156,16 @@ Molecular formulas and m/z values can be computed for various MS adducts using :
 
 Module Reference
 ---------------------------------------
-.. autoclass: mzapy.isotopes.MolecularFormula
 
-.. autofunction:: mzapy.isotopes.MolecularFormula.__init__
+Molecular Formula Object
+***************************************
+
+.. autoclass :: mzapy.isotopes.MolecularFormula
+
+.. autofunction :: mzapy.isotopes.MolecularFormula.__init__
+
+Utility Functions
+***************************************
 
 .. autofunction :: mzapy.isotopes.valid_element
 
