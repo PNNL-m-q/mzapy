@@ -19,6 +19,12 @@ Module Reference
 
 .. autofunction:: mzapy.calibration._CalibrationBase.transform
 
+.. autoclass:: mzapy.calibration.MassCalibration
+
+.. autofunction:: mzapy.calibration.MassCalibration.__init__
+
+.. autofunction:: mzapy.calibration.MassCalibration.calibrated_mass
+
 .. autoclass:: mzapy.calibration.TWCCSCalibration
 
 .. autofunction:: mzapy.calibration.TWCCSCalibration.__init__

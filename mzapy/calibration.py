@@ -131,6 +131,72 @@ class _CalibrationBase:
         return self.fit_function(X, *self.opt_params)
 
 
+class MassCalibration(_CalibrationBase):
+    """
+    mass calibration
+
+    Attributes
+    ----------
+    mz_ref : ``numpy.ndarray(float)``
+    mz_obs : ``numpy.ndarray(float)``
+        arrays of reference and observed m/z values
+    fit_func : ``str``
+        function to use for fitting
+    """
+    # map valid fit functions to the actual functions and initial parameters
+    _valid_fit_funcs = {
+        'linear': (lambda X, a, b: a * X + b, (1., 0.)), 
+    }
+
+    def __init__(self, mz_ref, mz_obs, fit_func,
+                 fit=True):
+        """
+        Initialize a new instance of MassCalibration
+
+        Performs fitting at initialization.
+
+        Parameters
+        ----------
+        mz_ref : ``numpy.ndarray(float)``
+        mz_obs : ``numpy.ndarray(float)``
+            arrays of reference and observed m/z values
+        fit_func : ``str``
+            function to use for fitting, valid options are: 'linear'
+        fit : ``bool``, default=True
+            perform fitting at initialization
+        """
+        # validate and store parameters
+        self.mz_ref, self.mz_obs, self.fit_func  =  mz_ref, mz_obs, fit_func
+        if self.fit_func not in self._valid_fit_funcs:
+            msg = 'MassCalibration: __init__: fit_func "{}" invalid, must be one of: {}'
+            valid_func_names = [_ for _ in self._valid_fit_funcs.keys()]
+            raise ValueError(msg.format(self.fit_func, valid_func_names))
+        # set fit_function and init_params based on fit_func
+        self.fit_function, self.init_params = self._valid_fit_funcs[self.fit_func]
+        if fit:
+            # setup values for fitting, make corrections if applicable
+            self._X = self.mz_obs
+            self._y = self.mz_ref
+            # fit calibration curve
+            self._y_fit = self.fit(self._X, self._y)
+
+    def calibrated_mass(self, mz):
+        """
+        returns calibrated masses for a set of uncalibrated masses
+
+        Parameters
+        ----------
+        mz : ``numpy.ndarray(float)`` or ``float``
+            uncalibrated m/z value(s)
+
+        Returns
+        -------
+        mz_cal : ``numpy.ndarray(float)`` or ``float``
+            calibrated m/z value(s)
+        """
+        return self.transform(mz)
+
+
 class TWCCSCalibration(_CalibrationBase):
     """
     TWIM CCS calibration
@@ -175,7 +241,7 @@ class TWCCSCalibration(_CalibrationBase):
     def __init__(self, mz, arrival_time, ref_ccs, z, fit_func,
                  correct_ccs=True, correct_dt=False, edc=None, buffer_gas='N2', fit=True):
         """
-        Initialize a new instance of TWCCSCalibration using 
+        Initialize a new instance of TWCCSCalibration 
 
         Performs fitting at initialization.
 
@@ -210,7 +276,8 @@ class TWCCSCalibration(_CalibrationBase):
         self.mz, self.arrival_time, self.ref_ccs, self.z, self.fit_func =  mz, arrival_time, ref_ccs, float(z), fit_func
         if self.fit_func not in self._valid_fit_funcs:
             msg = 'TWCCSCalibration: __init__: fit_func "{}" invalid, must be one of: {}'
-            raise ValueError(msg.format(self.fit_func, self._valid_fit_funcs))
+            valid_func_names = [_ for _ in self._valid_fit_funcs.keys()]
+            raise ValueError(msg.format(self.fit_func, valid_func_names))
         # set fit_function and init_params based on fit_func
         self.fit_function, self.init_params = self._valid_fit_funcs[self.fit_func]
         self.correct_ccs, self.correct_dt, self.edc = correct_ccs, correct_dt, edc
@@ -264,6 +331,11 @@ class TWCCSCalibration(_CalibrationBase):
             m/z value(s)
         arrival_time : ``numpy.ndarray(float)`` or ``float``
             arrival time(s)
+
+        Returns
+        -------
+        calibrated_ccs : ``numpy.ndarray(float)`` or ``float``
+            calibrated CCS value(s)
         """
         ccs = self.transform(self._correct_dt(arrival_time, mz) if self.correct_dt else arrival_time)
         return self._inverse_correct_ccs(ccs, mz) if self.correct_ccs else ccs
