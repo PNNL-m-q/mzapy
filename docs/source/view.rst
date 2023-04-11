@@ -135,4 +135,6 @@ Calibration Plots
 
 .. autofunction :: mzapy.view.plot_mass_calibration
 
+.. autofunction :: mzapy.view.plot_dtsf_ccs_calibration
+
 .. autofunction :: mzapy.view.plot_tw_ccs_calibration

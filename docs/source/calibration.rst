@@ -3,7 +3,11 @@
 Module for performing calibration operations.
 
 
-CCS for TWIM measurements, method based on:
+CCS for single field DTIMS, method based on:
+
+- *Anal. Chem. 2017, 89, 9048-9055*
+
+CCS for TWIMS measurements, method based on:
 
 - *Nat. Protoc. 2008, 3, 1139-1152* (dt and CCS correction)
 - *Anal. Chem. 2016, 88, 7329-7336* (calibration power function)
@@ -22,6 +26,7 @@ Base Object
 
 .. autofunction :: mzapy.calibration._CalibrationBase.transform
 
+
 Mass Calibration
 ***************************************
 
@@ -31,11 +36,24 @@ Mass Calibration
 
 .. autofunction :: mzapy.calibration.MassCalibration.calibrated_mass
 
+
+
+DTIMS CCS Calibration (Single-Field)
+***************************************
+
+.. autoclass :: mzapy.calibration.CCSCalibrationDTsf
+
+.. autofunction :: mzapy.calibration.CCSCalibrationDTsf.__init__
+
+.. autofunction :: mzapy.calibration.CCSCalibrationDTsf.calibrated_ccs
+
+
+
 TWIMS CCS Calibration
 ***************************************
 
-.. autoclass :: mzapy.calibration.TWCCSCalibration
+.. autoclass :: mzapy.calibration.CCSCalibrationTW
 
-.. autofunction :: mzapy.calibration.TWCCSCalibration.__init__
+.. autofunction :: mzapy.calibration.CCSCalibrationTW.__init__
 
-.. autofunction :: mzapy.calibration.TWCCSCalibration.calibrated_ccs
+.. autofunction :: mzapy.calibration.CCSCalibrationTW.calibrated_ccs
