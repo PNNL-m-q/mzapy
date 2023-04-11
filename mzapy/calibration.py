@@ -131,9 +131,176 @@ class _CalibrationBase:
         return self.fit_function(X, *self.opt_params)
 
 
-class TWCCSCalibration(_CalibrationBase):
+class MassCalibration(_CalibrationBase):
     """
-    TWIM CCS calibration
+    mass calibration
+
+    Attributes
+    ----------
+    mz_ref : ``numpy.ndarray(float)``
+    mz_obs : ``numpy.ndarray(float)``
+        arrays of reference and observed m/z values
+    fit_func : ``str``
+        function to use for fitting
+    """
+    # map valid fit functions to the actual functions and initial parameters
+    _valid_fit_funcs = {
+        'linear': (lambda X, a, b: a * X + b, (1., 0.)), 
+    }
+
+    def __init__(self, mz_ref, mz_obs, fit_func,
+                 fit=True):
+        """
+        Initialize a new instance of MassCalibration
+
+        Performs fitting at initialization.
+
+        Parameters
+        ----------
+        mz_ref : ``numpy.ndarray(float)``
+        mz_obs : ``numpy.ndarray(float)``
+            arrays of reference and observed m/z values
+        fit_func : ``str``
+            function to use for fitting, valid options are: 'linear'
+        fit : ``bool``, default=True
+            perform fitting at initialization
+        """
+        # validate and store parameters
+        self.mz_ref, self.mz_obs, self.fit_func  =  mz_ref, mz_obs, fit_func
+        if self.fit_func not in self._valid_fit_funcs:
+            msg = 'MassCalibration: __init__: fit_func "{}" invalid, must be one of: {}'
+            valid_func_names = [_ for _ in self._valid_fit_funcs.keys()]
+            raise ValueError(msg.format(self.fit_func, valid_func_names))
+        # set fit_function and init_params based on fit_func
+        self.fit_function, self.init_params = self._valid_fit_funcs[self.fit_func]
+        if fit:
+            # setup values for fitting, make corrections if applicable
+            self._X = self.mz_obs
+            self._y = self.mz_ref
+            # fit calibration curve
+            self._y_fit = self.fit(self._X, self._y)
+
+    def calibrated_mass(self, mz):
+        """
+        returns calibrated masses for a set of uncalibrated masses
+
+        Parameters
+        ----------
+        mz : ``numpy.ndarray(float)`` or ``float``
+            uncalibrated m/z value(s)
+
+        Returns
+        -------
+        mz_cal : ``numpy.ndarray(float)`` or ``float``
+            calibrated m/z value(s)
+        """
+        return self.transform(mz)
+
+
+class CCSCalibrationDTsf(_CalibrationBase):
+    """
+    single-field DT CCS calibration
+
+    Attributes
+    ----------
+    mz : ``numpy.ndarray(float)``
+        calibrant m/z values
+    arrival_time : ``numpy.ndarray(float)``
+        calibrant arrival times
+    ref_ccs : ``numpy.ndarray(float)``
+        calibrant reference CCS values
+    z : ``float``
+        charge state (converted to float)
+    buffer_gas : ``str``
+        buffer gas for IM separation
+    """
+
+    # map valid buffer gasses to their mass
+    _valid_buffer_gasses = {
+        'N2': monoiso_mass({'N': 2}), 
+        'He': monoiso_mass({'He': 1}),
+    }
+
+    def __init__(self, mz, arrival_time, ref_ccs, z,
+                 buffer_gas='N2', fit=True):
+        """
+        Initialize a new instance of CCSCalibrationDTsf 
+
+        Performs fitting at initialization.
+
+        Parameters
+        ----------
+        mz : ``numpy.ndarray(float)``
+            calibrant m/z values
+        arrival_time : ``numpy.ndarray(float)``
+            calibrant arrival times
+        ref_ccs : ``numpy.ndarray(float)``
+            calibrant reference CCS values
+        z : ``int``
+            charge state
+        buffer_gas : ``str``, default='N2'
+            specify buffer gas for IM separation
+        fit : ``bool``, default=True
+            perform fitting at initialization
+        """
+        # validate and store parameters
+        self.mz, self.arrival_time, self.ref_ccs, self.z =  mz, arrival_time, ref_ccs, float(z)
+        # set init_params
+        self.init_params = (0., 1.)  # t_fix = 0 to start, beta = 1 to start
+        self.buffer_gas = buffer_gas
+        if self.buffer_gas not in self._valid_buffer_gasses:
+            msg = 'CCSCalibrationDTsf: __init__: buffer_gas "{}" invalid, must be one of: {}'
+            raise ValueError(msg.format(self.buffer_gas, self._valid_buffer_gasses))
+        self.buffer_gas_mass = self._valid_buffer_gasses[self.buffer_gas]
+        if fit:
+            # setup values for fitting
+            self._X = np.array([self.arrival_time, self.mz])
+            self._y = self.ref_ccs
+            # fit calibration curve
+            self._y_fit = self.fit(self._X, self._y)
+
+    def fit_function(self, X, t_fix, beta):
+        """
+        X should have shape (2, ?) and contain vectors for arrival time and m/z
+        function: CCS = z (arrival_time + t_fix) / (beta * m(mz)) 
+        where t_fix and beta are the fit parameters
+        and m(mz) is the mass term [sqrt(m_i / (m_i + m_b))] that accounts for ion and buffer gas masses
+        """
+        return self.z * (X[0] + t_fix) / (beta * self._mass_term(X[1]))
+
+    def _mass_term(self, mz):
+        """
+        compute sqrt(m_i / (m_i + m_b)) term for m/z of ion and buffer gas
+        """
+        m = mz * self.z  # mass not m/z
+        return np.sqrt(m / (m + self.buffer_gas_mass))
+
+    def calibrated_ccs(self, mz, arrival_time):
+        """
+        returns calibrated CCS values for a set of m/z values and arrival times (also works for single values)
+
+        Parameters
+        ----------
+        mz : ``numpy.ndarray(float)`` or ``float``
+            m/z value(s)
+        arrival_time : ``numpy.ndarray(float)`` or ``float``
+            arrival time(s)
+
+        Returns
+        -------
+        calibrated_ccs : ``numpy.ndarray(float)`` or ``float``
+            calibrated CCS value(s)
+        """
+        if type(mz) == float:
+            X = np.array([[arrival_time], [mz]])
+        else:
+            X = np.array([arrival_time, mz])
+        return self.transform(X)
+
+
+class CCSCalibrationTW(_CalibrationBase):
+    """
+    TWIMS CCS calibration
 
     Attributes
     ----------
@@ -175,7 +342,7 @@ class TWCCSCalibration(_CalibrationBase):
     def __init__(self, mz, arrival_time, ref_ccs, z, fit_func,
                  correct_ccs=True, correct_dt=False, edc=None, buffer_gas='N2', fit=True):
         """
-        Initialize a new instance of TWCCSCalibration using 
+        Initialize a new instance of CCSCalibrationTW 
 
         Performs fitting at initialization.
 
@@ -209,18 +376,19 @@ class TWCCSCalibration(_CalibrationBase):
         # validate and store parameters
         self.mz, self.arrival_time, self.ref_ccs, self.z, self.fit_func =  mz, arrival_time, ref_ccs, float(z), fit_func
         if self.fit_func not in self._valid_fit_funcs:
-            msg = 'TWCCSCalibration: __init__: fit_func "{}" invalid, must be one of: {}'
-            raise ValueError(msg.format(self.fit_func, self._valid_fit_funcs))
+            msg = 'CCSCalibrationTW: __init__: fit_func "{}" invalid, must be one of: {}'
+            valid_func_names = [_ for _ in self._valid_fit_funcs.keys()]
+            raise ValueError(msg.format(self.fit_func, valid_func_names))
         # set fit_function and init_params based on fit_func
         self.fit_function, self.init_params = self._valid_fit_funcs[self.fit_func]
         self.correct_ccs, self.correct_dt, self.edc = correct_ccs, correct_dt, edc
         if self.correct_dt and self.edc is None:
-            msg = 'TWCCSCalibration: __init__: correct_dt was set but no edc was provided'
+            msg = 'CCSCalibrationTW: __init__: correct_dt was set but no edc was provided'
             raise ValueError(msg)
         self.buffer_gas = buffer_gas
         if self.buffer_gas not in self._valid_buffer_gasses:
-            msg = 'TWCCSCalibration: __init__: buffer_gas "{}" invalid, must be one of: {}'
-            raise ValueError(msg.format(self.fit_func, self._valid_buffer_gasses))
+            msg = 'CCSCalibrationTW: __init__: buffer_gas "{}" invalid, must be one of: {}'
+            raise ValueError(msg.format(self.buffer_gas, self._valid_buffer_gasses))
         self.buffer_gas_mass = self._valid_buffer_gasses[self.buffer_gas]
         if fit:
             # setup values for fitting, make corrections if applicable
@@ -264,6 +432,11 @@ class TWCCSCalibration(_CalibrationBase):
             m/z value(s)
         arrival_time : ``numpy.ndarray(float)`` or ``float``
             arrival time(s)
+
+        Returns
+        -------
+        calibrated_ccs : ``numpy.ndarray(float)`` or ``float``
+            calibrated CCS value(s)
         """
         ccs = self.transform(self._correct_dt(arrival_time, mz) if self.correct_dt else arrival_time)
         return self._inverse_correct_ccs(ccs, mz) if self.correct_ccs else ccs

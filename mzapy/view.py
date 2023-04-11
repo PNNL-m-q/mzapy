@@ -13,6 +13,8 @@ from functools import wraps
 
 from matplotlib import pyplot as plt, rcParams
 
+from mzapy._util import _ppm_error
+
 
 # always set font size to 6 on import
 rcParams['font.size'] = 6
@@ -356,14 +358,109 @@ def add_peaks_to_plot(ax, peak_means, peak_heights, peak_fwhms,
             ax.text(pk_mean + pk_width / 2, 0.75 * pk_height, s, size=fontsize, c=c)
 
 
-def plot_tw_ccs_calibration(calibration, figname=None):
+def plot_mass_calibration(calibration, figname=None):
     """
-    Generates a plot of a TW CCS calibration from a fitted instance of ``mzapy.calibration.TWCCSCalibration``
+    Generates a plot of a mass calibration from a fitted instance of ``mzapy.calibration.MassCalibration``
 
     Parameters
     ----------
-    calibration : ``mzapy.calibration.TWCCSCalibration``
-        fitted TW CCS calibration instance
+    calibration : ``mzapy.calibration.MassCalibration``
+        fitted mass calibration instance
+    figname : ``str``, optional
+        if not provided, do not save the figure or display it for interactive viewing. if figname is "show" then
+        display the figure for interactive viewing, and if figname is a path to an image file then save the image to
+        that path
+    """
+    # ensure that the calibration has been fitted
+    if calibration.opt_params is None:
+        msg = 'plot_mass_calibration: calibration has not been fit yet (calibration.opt_params is None)'
+        raise RuntimeError(msg)
+    # get reference and fitted values
+    X, y, y_fit = calibration._X, calibration._y, calibration._y_fit
+    ppms = _ppm_error(y, y_fit)
+    # get a text description of the fit parameters
+    text_format = {
+        'linear': "Y = {:.6f} * X {:+.6f}",
+    }
+    param_text = text_format[calibration.fit_func].format(*calibration.opt_params)
+    fig, axs = plt.subplots(nrows=2, figsize=(3.33, 4), gridspec_kw={'height_ratios': [2.5, 1]})
+    xlab = 'm/z (obs.)'
+    axs[0].plot(X, y, 'b.', ms=5)
+    axs[0].plot(X, y_fit, 'b--', lw=0.75)
+    axs[0].set_ylabel('m/z (ref.)')
+    axs[0].text(0.05, 1., param_text, color='b', transform=axs[0].transAxes)
+    axs[1].plot(X, ppms, 'b.', ms=5)
+    axs[1].axhline(0, ls='--', lw=0.5, color='k')
+    axs[1].set_xlabel(xlab)
+    axs[1].set_ylabel('ppm error')
+    for ax in axs:
+        for d in ['top', 'right']:
+            ax.spines[d].set_visible(False)
+    if figname is not None:
+        plt.tight_layout()
+        if figname == 'show':
+            plt.show()
+        else:
+            plt.savefig(figname, dpi=350, bbox_inches='tight')
+
+
+def plot_dtsf_ccs_calibration(calibration, figname=None):
+    """
+    Generates a plot of a single-filed DTIMS CCS calibration from a fitted 
+    instance of ``mzapy.calibration.CCSCalibrationDTsf``
+
+    Parameters
+    ----------
+    calibration : ``mzapy.calibration.CCSCalibrationDTsf``
+        fitted single-field DTIMS CCS calibration instance
+    figname : ``str``, optional
+        if not provided, do not save the figure or display it for interactive viewing. if figname is "show" then
+        display the figure for interactive viewing, and if figname is a path to an image file then save the image to
+        that path
+    """
+    # ensure that the calibration has been fitted
+    if calibration.opt_params is None:
+        msg = 'plot_dtsf_ccs_calibration: calibration has not been fit yet (calibration.opt_params is None)'
+        raise RuntimeError(msg)
+    # get reference and fitted values
+    y, y_fit = calibration._y, calibration._y_fit
+    dt = calibration.arrival_time
+    ccs_ref = calibration.ref_ccs
+    ccs_cal = calibration.calibrated_ccs(calibration.mz, calibration.arrival_time)
+    percent_error = 100. * (ccs_cal - ccs_ref) / ccs_ref
+    # get a text description of the fit parameters
+    text_format = 't_fix = {:+.4f}\nbeta = {:.4f}' 
+    param_text = text_format.format(*calibration.opt_params)
+    fig, axs = plt.subplots(nrows=2, figsize=(3.33, 4), gridspec_kw={'height_ratios': [2.5, 1]})
+    xlab = 'arrival time (ms)'
+    axs[0].plot(dt, y, 'b.', ms=5)
+    axs[0].plot(dt, y_fit, 'b--', lw=0.75)
+    axs[0].set_ylabel('CCS (Ang^2)')
+    axs[0].text(0.05, 1., param_text, color='b', transform=axs[0].transAxes)
+    axs[1].plot(dt, percent_error, 'b.', ms=5)
+    axs[1].axhline(0, ls='--', lw=0.5, color='k')
+    axs[1].set_xlabel(xlab)
+    axs[1].set_ylabel('CCS % error')
+    for ax in axs:
+        for d in ['top', 'right']:
+            ax.spines[d].set_visible(False)
+    if figname is not None:
+        plt.tight_layout()
+        if figname == 'show':
+            plt.show()
+        else:
+            plt.savefig(figname, dpi=350, bbox_inches='tight')
+
+
+def plot_tw_ccs_calibration(calibration, figname=None):
+    """
+    Generates a plot of a TWIMS CCS calibration from a fitted 
+    instance of ``mzapy.calibration.CCSCalibrationTW``
+
+    Parameters
+    ----------
+    calibration : ``mzapy.calibration.CCSCalibrationTW``
+        fitted TWIMS CCS calibration instance
     figname : ``str``, optional
         if not provided, do not save the figure or display it for interactive viewing. if figname is "show" then
         display the figure for interactive viewing, and if figname is a path to an image file then save the image to
@@ -380,9 +477,9 @@ def plot_tw_ccs_calibration(calibration, figname=None):
     percent_error = 100. * (ccs_cal - ccs_ref) / ccs_ref
     # get a text description of the fit parameters
     text_format = {
-        'linear': "Y = {:.2e} * X + {:.2e}",
-        'quadratic': "Y = {:.2e} * X^2 + {:.2e} * X + {:.2e}",
-        'power1': "Y = {:.2e} + {:.2e} * X^{:.3f}",
+        'linear': "Y = {:.2e} * X {:+.2e}",
+        'quadratic': "Y = {:.2e} * X^2 {:+.2e} * X {:+.2e}",
+        'power1': "Y = {:.2e} {:+.2e} * X^{:.3f}",
         'power2': "Y = {:.2e} * (X {:+5.2e})^{:.3f}",
     }
     param_text = text_format[calibration.fit_func].format(*calibration.opt_params)
@@ -405,3 +502,5 @@ def plot_tw_ccs_calibration(calibration, figname=None):
             plt.show()
         else:
             plt.savefig(figname, dpi=350, bbox_inches='tight')
+
+

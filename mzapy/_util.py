@@ -28,6 +28,25 @@ def _ppm_error(reference, other):
     ppm : float
         ppm error of other relative to reference
     """
+    return 1e6 * (other - reference) / reference
+
+
+def _abs_ppm_error(reference, other):
+    """
+    compute the absolute error in ppm for a value relative to some reference value
+    
+    Paramters
+    ---------
+    reference : float
+        reference value
+    other : float
+        other value
+
+    Returns
+    -------
+    ppm : float
+        ppm error of other relative to reference
+    """
     return 1e6 * np.abs(other - reference) / reference
 
 

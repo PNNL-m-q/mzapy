@@ -16,7 +16,7 @@ MZA data converter tool is available at https://github.com/PNNL-m-q/mza
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: API Reference
 
    MZA   
