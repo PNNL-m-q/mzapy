@@ -131,6 +131,23 @@ class _CalibrationBase:
         return self.fit_function(X, *self.opt_params)
 
 
+def _fitfnc_line(X, a, b):
+    """ linear fitting function """
+    return a * X + b
+
+def _fitfnc_quad(X, a, b, c):
+    """ quadratic fitting function """
+    return a * X**2 + b * X + c
+
+def _fitfnc_pow1(X, a, b, c):
+    """ power fitting function (form 1) """
+    return a + b * np.power(X, c)
+
+def _fitfnc_pow2(X, a, b, c):
+    """ power fitting function (form 2) """
+    return a * np.power((X + b), c)
+
+
 class MassCalibration(_CalibrationBase):
     """
     mass calibration
@@ -145,7 +162,7 @@ class MassCalibration(_CalibrationBase):
     """
     # map valid fit functions to the actual functions and initial parameters
     _valid_fit_funcs = {
-        'linear': (lambda X, a, b: a * X + b, (1., 0.)), 
+        'linear': (_fitfnc_line, (1., 0.)), 
     }
 
     def __init__(self, mz_ref, mz_obs, fit_func,
@@ -328,10 +345,10 @@ class CCSCalibrationTW(_CalibrationBase):
 
     # map valid fit functions to the actual functions and initial parameters
     _valid_fit_funcs = {
-        'linear': (lambda X, a, b: a * X + b, (1., 0.)), 
-        'quadratic': (lambda X, a, b, c: a * X**2 + b * X + c, (0., 1., 0.)),
-        'power1': (lambda X, a, b, c: a + b * np.power(X, c), (500., 1., 0.5)), 
-        'power2': (lambda X, a, b, c: a * np.power((X + b), c), (1., 1e-4, 0.5)),
+        'linear': (_fitfnc_line, (1., 0.)), 
+        'quadratic': (_fitfnc_quad, (0., 1., 0.)),
+        'power1': (_fitfnc_pow1, (500., 1., 0.5)), 
+        'power2': (_fitfnc_pow2, (1., 1e-4, 0.5)),
     }
     # map valid buffer gasses to their mass
     _valid_buffer_gasses = {
