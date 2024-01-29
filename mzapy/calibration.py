@@ -214,6 +214,27 @@ class MassCalibration(_CalibrationBase):
         return self.transform(mz)
 
 
+def mass_calibration_from_params(fit_func, params):
+    """
+    Create a new `MassCalibration` instance directly from optimized parameters
+
+    Parameters
+    ----------
+    fit_func : ``str``
+        fitting function to use
+    params : ``Tuple(?)``
+        optimized calibration parameters
+
+    Returns
+    -------
+    cal : ``MassCalibration``
+        optimized `MassCalibration` instance
+    """
+    cal = MassCalibration(None, None, fit_func, fit=False)
+    cal.opt_params = params
+    return cal
+
+
 class CCSCalibrationDTsf(_CalibrationBase):
     """
     single-field DT CCS calibration
@@ -313,6 +334,28 @@ class CCSCalibrationDTsf(_CalibrationBase):
         else:
             X = np.array([arrival_time, mz])
         return self.transform(X)
+
+
+def dtsf_ccs_calibration_from_params(z, t_fix, beta):
+    """
+    Create a new `CCSCalibrationDTsf` instance directly from optimized parameters
+
+    Parameters
+    ----------
+    z : ``int``
+        charge state
+    t_fix : ``float``
+    beta : ``float``
+        single-field calibration parameters
+
+    Returns
+    -------
+    cal : ``CCSCalibrationDTsf``
+        optimized `CCSCalibrationDTsf` instance
+    """
+    cal = CCSCalibrationDTsf(None, None, None, z, fit=False)
+    cal.opt_params = (t_fix, beta)
+    return cal
 
 
 class CCSCalibrationTW(_CalibrationBase):
@@ -457,3 +500,26 @@ class CCSCalibrationTW(_CalibrationBase):
         """
         ccs = self.transform(self._correct_dt(arrival_time, mz) if self.correct_dt else arrival_time)
         return self._inverse_correct_ccs(ccs, mz) if self.correct_ccs else ccs
+
+
+def tw_ccs_calibration_from_params(z, fit_func, params):
+    """
+    Create a new `CCSCalibrationTW` instance directly from optimized parameters
+
+    Parameters
+    ----------
+    z : ``int``
+        charge state
+    fit_func : ``str``
+        fitting function to use
+    params : ``Tuple(?)``
+        optimized parameters
+
+    Returns
+    -------
+    cal : ``CCSCalibrationTW``
+        optimized `CCSCalibrationTW` instance
+    """
+    cal = CCSCalibrationTW(None, None, None, z, fit_func, fit=False)
+    cal.opt_params = params
+    return cal

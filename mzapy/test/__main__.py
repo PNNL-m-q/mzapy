@@ -9,8 +9,15 @@ Dylan Ross (dylan.ross@pnnl.gov)
 
 import unittest
 
-from mzapy.test.isotopes import TestMolecularFormula, TestMassCalcs
-from mzapy.test.peaks import TestSignalProcessing, TestPeakFitting
+from mzapy.test.isotopes import (
+    TestMolecularFormula, TestMassCalcs
+)
+from mzapy.test.peaks import (
+    TestSignalProcessing, TestPeakFitting
+)
+from mzapy.test.calibration import (
+    TestCalFactoryFuncs
+)
 
 
 if __name__ == '__main__':
