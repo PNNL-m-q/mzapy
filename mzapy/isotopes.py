@@ -9,6 +9,7 @@ Dylan Ross (dylan.ross@pnnl.gov)
 
 import math
 import collections
+from re import compile as recompile
 
 
 # define monoisotopic masses for selected elements
@@ -162,7 +163,7 @@ class MolecularFormula(collections.UserDict):
 
     def __repr__(self):
         """ same as dict but with wrapping that indicates it's not the exact same """
-        return 'MolecularFormula' + super().__repr__()
+        return self.__class__.__name__ + super().__repr__()
 
     def __str__(self):
         """ 
@@ -186,6 +187,74 @@ class MolecularFormula(collections.UserDict):
     # TODO (Dylan Ross): Add a replace method that replaces one element with another, something like:
     #                        formula.replace('H', 'D', 7)  <- replace 7 hydrogens with deuteriums
     #                    This could be useful for accounting for labeled standards as in the above example 
+
+
+class OrderedMolecularFormula(MolecularFormula):
+    """
+    Modified MolecularFormula class which can be initialized from a
+    formula string and outputs formula strings with consistent atom ordering
+    (low->high mass) 
+    """
+
+    def __init__(self, 
+                 formula,
+                 **kwargs):
+        """
+        Create a new instance of a MolecularFormula from a formula string
+
+        Parameters
+        ----------
+        formula_str : ``str`` or ``MolecularFormula``
+            typical formula string with atoms and their counts, or an instance of 
+            parent class (MolecularFormula) for easy conversion
+        """
+        # parse the input from str into dict then just use the superclass init logic
+        if type(formula) is str:
+            form_dict = self._parse_formula_str(formula)
+            super().__init__(form_dict)
+        elif isinstance(formula, MolecularFormula):
+            super().__init__(formula)
+        else:
+            msg = ('OrderedMolecularFormula: __init__: must be initialized with ',
+                   'a formula string or an instance of MolecularFormula')
+            raise ValueError(msg)
+        # after adding elements/counts to internal dict, validate the elements
+        # since we need element masses to sort by
+        self._validate_elements()
+
+    def _parse_formula_str(self, 
+                           formula_str):
+        """
+        parses a formula string and returns the corresponding dict with atoms
+        mapped to counts
+        """
+        pat = recompile('(?P<atm>[A-Z][a-z]{0,1})(?P<cnt>[0-9]*)')
+        try:
+            return {mat.groupdict()['atm']: (lambda c: 1 if c == '' else int(c))(mat.groupdict()['cnt']) for mat in pat.finditer(formula_str)}
+        except Exception as e:
+            print(e)
+            msg = ('OrderedMolecularFormula: _parse_formula_str: unable to ',
+                   'parse formula string: "{}"')
+            raise ValueError(msg.format(formula_str))
+
+    def _validate_elements(self):
+        """
+        make sure there are masses for all of the elements in the formula
+        """
+        for element in self.data.keys():
+            if not valid_element(element):
+                msg = 'OrderedMolecularFormula: _validate_elements: "{}" is not a valid element'
+                raise ValueError(msg.format(element))
+
+    def __str__(self):
+        """ formula string, elements sorted by increasing mass """
+        s = ''
+        for e in sorted(self.data.keys(), key=lambda e: _ELEMENT_MONOISO_MASS[e]):
+            s += e
+            c = self.data[e]
+            if c > 1:
+                s += str(c)
+        return s
 
 
 # define the molecular formula changes for commonly observed MS ionization states

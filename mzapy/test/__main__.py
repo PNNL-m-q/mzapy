@@ -10,7 +10,7 @@ Dylan Ross (dylan.ross@pnnl.gov)
 import unittest
 
 from mzapy.test.isotopes import (
-    TestMolecularFormula, TestMassCalcs
+    TestMolecularFormula, TestOrderedMolecularFormula, TestMassCalcs
 )
 from mzapy.test.peaks import (
     TestSignalProcessing, TestPeakFitting
