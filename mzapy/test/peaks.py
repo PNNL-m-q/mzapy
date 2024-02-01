@@ -38,7 +38,7 @@ class TestPeakFitting(unittest.TestCase):
 
     def test_find_peaks_1d_localmax_bad_input(self):
         # tests localmax peak fitting function with bad inputs 
-        pass
+        raise NotImplementedError("not implemented")
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.7.0'
+__version__ = '1.7.1.dylanhross_6'
 
 
 import queue
@@ -126,6 +126,10 @@ class MZA():
         self._setup_threaded_io()
         # set up scan cache mapping scan index to scan data, None means no caching is performed
         self._scan_cache = {} if cache_scan_data else None
+        # keep track of cache hits/misses
+        # these counts only reflect stats from the lifetime of this MZA instance
+        # but a persistent running total is also kept in the cache file itself
+        self._scan_cache_hits, self._scan_cache_misses = 0, 0
         if self._scan_cache is not None:
             # if the cache file is not found, ignore and just start with {}
             self.load_scan_cache(ignore_no_cache_file=True)
@@ -149,7 +153,7 @@ class MZA():
         scan_cache_file = self._scan_cache_file if scan_cache_file is None else scan_cache_file
         if not os.path.isfile(scan_cache_file):
             if ignore_no_cache_file:
-                self._scan_cache = {}
+                self._scan_cache = {"hits": 0, "misses": 0}
             else:
                 msg = 'MZA.load_scan_cache: scan cache file {} not found'
                 raise RuntimeError(msg.format(scan_cache_file))
@@ -170,6 +174,14 @@ class MZA():
             msg = 'MZA.save_scan_cache: there is no scan cache to save'
             raise RuntimeError(msg)
         scan_cache_file = self._scan_cache_file if scan_cache_file is None else scan_cache_file
+        # store running totals of cache hits/misses in the cache file
+        # this check keeps backwards compatibility with scan cache files that already exist
+        # but that do not have running total cache hits/misses stored yet
+        if "hits" not in self._scan_cache:
+            self._scan_cache["hits"] = 0
+            self._scan_cache["misses"] = 0
+        self._scan_cache["hits"] += self._scan_cache_hits
+        self._scan_cache["misses"] += self._scan_cache_misses
         with open(scan_cache_file, 'wb') as pf:
             pickle.dump(self._scan_cache, pf)
 
@@ -463,6 +475,9 @@ class MZA():
             for idx in scan_data:
                 if idx not in self._scan_cache:
                     self._scan_cache[idx] = scan_data[idx]
+        # track scan cache hits and misses
+        self._scan_cache_hits += n_cached
+        self._scan_cache_misses += n_uncached
         return scan_data
 
     def collect_ms1_df_by_rt(self, rt_min, rt_max, mz_bounds=None, verbose=False):

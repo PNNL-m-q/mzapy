@@ -5,6 +5,10 @@ This object serves as the primary interface for interacting with raw data in the
 
 Module Reference
 ---------------------------------------
+
+Initialization
+***************************************
+
 .. autoclass :: mzapy.MZA
 
 .. autofunction :: mzapy.MZA.__init__
@@ -31,9 +35,37 @@ Module Reference
 
 .. autofunction :: mzapy.MZA.close
 
+
+Scan Caching
+***************************************
+
+.. autofunction :: mzapy.MZA.load_scan_cache
+
+.. autofunction :: mzapy.MZA.save_scan_cache
+
+
+Metadata
+***************************************
+
+.. autofunction :: mzapy.MZA.metadata
+
+
+Extracted Ion Chromatograms
+***************************************
+
+.. autofunction :: mzapy.MZA.collect_xic_arrays_by_mz
+
+.. autofunction :: mzapy.MZA.collect_xic_arrays_by_mz_dt
+
+
+Arrival Time Distributions
+***************************************
+
 .. autofunction :: mzapy.MZA.collect_atd_arrays_by_rt_mz
 
-.. autofunction :: mzapy.MZA.collect_dtmz_arrays_by_rt
+
+MS1 Spectra
+***************************************
 
 .. autofunction :: mzapy.MZA.collect_ms1_arrays_by_rt
 
@@ -45,6 +77,10 @@ Module Reference
 
 .. autofunction :: mzapy.MZA.collect_ms1_df_by_rt_dt
 
+
+MS2 Spectra
+***************************************
+
 .. autofunction :: mzapy.MZA.collect_ms2_arrays_by_dt
 
 .. autofunction :: mzapy.MZA.collect_ms2_arrays_by_rt_dt
@@ -53,19 +89,14 @@ Module Reference
 
 .. autofunction :: mzapy.MZA.collect_ms2_df_by_rt_dt
 
-.. autofunction :: mzapy.MZA.collect_rtdt_arrays_by_mz
+
+2-Dimensional Data
+***************************************
 
 .. autofunction :: mzapy.MZA.collect_rtmz_arrays
 
 .. autofunction :: mzapy.MZA.collect_rtmz_arrays_by_dt
 
-.. autofunction :: mzapy.MZA.collect_xic_arrays_by_mz
+.. autofunction :: mzapy.MZA.collect_dtmz_arrays_by_rt
 
-.. autofunction :: mzapy.MZA.collect_xic_arrays_by_mz_dt
-
-.. autofunction :: mzapy.MZA.load_scan_cache
-
-.. autofunction :: mzapy.MZA.metadata
-
-.. autofunction :: mzapy.MZA.save_scan_cache
-
+.. autofunction :: mzapy.MZA.collect_rtdt_arrays_by_mz
