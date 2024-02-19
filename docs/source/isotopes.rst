@@ -83,6 +83,11 @@ A ``MolecularFormula`` may be initialized in one of four ways:
     # octane.__str__ -> "C8H18"
 
 
+The ``OrderedMolecularFormula`` class
+--------------------------------------
+``OrderedMolecularFormula`` is a subclass of ``MolecularFormula`` which produces a string representation with elements in a consistent order (by increasing mass). The ``OrderedMolecularFormula`` is initialized from a molecular formula in typical string form (elements and counts) or from an instance of a ``MolecularFormula``. 
+
+
 Elements
 --------
 The following table summarizes the currently defined elements in the ``mzapy.isotopes`` module, 
@@ -103,6 +108,17 @@ K               38.9637074
 Se              79.9165196
 He              4.002603254
 Li 	            7.016003
+B               11.0093055        
+F               18.99840322        
+Si              27.976926534        
+Cl              34.96885272        
+Ca              39.9625906        
+Mg              23.9850423        
+Fe              55.9349393        
+Br              78.9183361        
+I               126.904473        
+Co              58.9331976        
+Cs              132.905433        
 ============  ================
 
 
@@ -163,6 +179,15 @@ Molecular Formula Object
 .. autoclass :: mzapy.isotopes.MolecularFormula
 
 .. autofunction :: mzapy.isotopes.MolecularFormula.__init__
+
+
+Ordered Molecular Formula Object
+***************************************
+
+.. autoclass :: mzapy.isotopes.OrderedMolecularFormula
+
+.. autofunction :: mzapy.isotopes.OrderedMolecularFormula.__init__
+
 
 Utility Functions
 ***************************************

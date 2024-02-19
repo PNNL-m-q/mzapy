@@ -98,7 +98,7 @@ class _CalibrationBase:
             msg = '_CalibrationBase: fit: self.init_params has not been set, this should have been set by subclass'
             raise RuntimeError(msg)
         try:
-            opt_params, cov = optimize.curve_fit(self.fit_function, X, y, maxfev=50000, p0=self.init_params)
+            opt_params, cov = optimize.curve_fit(self.fit_function, X, y, maxfev=1000000, p0=self.init_params)
         except Exception as e:
             msg = '_CalibrationBase: fit: unable to fit calibration:\n{}'
             raise RuntimeError(msg.format(e))            
@@ -131,6 +131,23 @@ class _CalibrationBase:
         return self.fit_function(X, *self.opt_params)
 
 
+def _fitfnc_line(X, a, b):
+    """ linear fitting function """
+    return a * X + b
+
+def _fitfnc_quad(X, a, b, c):
+    """ quadratic fitting function """
+    return a * X**2 + b * X + c
+
+def _fitfnc_pow1(X, a, b, c):
+    """ power fitting function (form 1) """
+    return a + b * np.power(X, c)
+
+def _fitfnc_pow2(X, a, b, c):
+    """ power fitting function (form 2) """
+    return a * np.power((X + b), c)
+
+
 class MassCalibration(_CalibrationBase):
     """
     mass calibration
@@ -145,7 +162,7 @@ class MassCalibration(_CalibrationBase):
     """
     # map valid fit functions to the actual functions and initial parameters
     _valid_fit_funcs = {
-        'linear': (lambda X, a, b: a * X + b, (1., 0.)), 
+        'linear': (_fitfnc_line, (1., 0.)), 
     }
 
     def __init__(self, mz_ref, mz_obs, fit_func,
@@ -195,6 +212,27 @@ class MassCalibration(_CalibrationBase):
             calibrated m/z value(s)
         """
         return self.transform(mz)
+
+
+def mass_calibration_from_params(fit_func, params):
+    """
+    Create a new `MassCalibration` instance directly from optimized parameters
+
+    Parameters
+    ----------
+    fit_func : ``str``
+        fitting function to use
+    params : ``Tuple(?)``
+        optimized calibration parameters
+
+    Returns
+    -------
+    cal : ``MassCalibration``
+        optimized `MassCalibration` instance
+    """
+    cal = MassCalibration(None, None, fit_func, fit=False)
+    cal.opt_params = params
+    return cal
 
 
 class CCSCalibrationDTsf(_CalibrationBase):
@@ -298,6 +336,28 @@ class CCSCalibrationDTsf(_CalibrationBase):
         return self.transform(X)
 
 
+def dtsf_ccs_calibration_from_params(z, t_fix, beta):
+    """
+    Create a new `CCSCalibrationDTsf` instance directly from optimized parameters
+
+    Parameters
+    ----------
+    z : ``int``
+        charge state
+    t_fix : ``float``
+    beta : ``float``
+        single-field calibration parameters
+
+    Returns
+    -------
+    cal : ``CCSCalibrationDTsf``
+        optimized `CCSCalibrationDTsf` instance
+    """
+    cal = CCSCalibrationDTsf(None, None, None, z, fit=False)
+    cal.opt_params = (t_fix, beta)
+    return cal
+
+
 class CCSCalibrationTW(_CalibrationBase):
     """
     TWIMS CCS calibration
@@ -328,10 +388,10 @@ class CCSCalibrationTW(_CalibrationBase):
 
     # map valid fit functions to the actual functions and initial parameters
     _valid_fit_funcs = {
-        'linear': (lambda X, a, b: a * X + b, (1., 0.)), 
-        'quadratic': (lambda X, a, b, c: a * X**2 + b * X + c, (0., 1., 0.)),
-        'power1': (lambda X, a, b, c: a + b * np.power(X, c), (500., 1., 0.5)), 
-        'power2': (lambda X, a, b, c: a * np.power((X + b), c), (1., 1e-4, 0.5)),
+        'linear': (_fitfnc_line, (1., 0.)), 
+        'quadratic': (_fitfnc_quad, (0., 1., 0.)),
+        'power1': (_fitfnc_pow1, (500., 1., 0.5)), 
+        'power2': (_fitfnc_pow2, (1., 1e-4, 0.5)),
     }
     # map valid buffer gasses to their mass
     _valid_buffer_gasses = {
@@ -440,3 +500,26 @@ class CCSCalibrationTW(_CalibrationBase):
         """
         ccs = self.transform(self._correct_dt(arrival_time, mz) if self.correct_dt else arrival_time)
         return self._inverse_correct_ccs(ccs, mz) if self.correct_ccs else ccs
+
+
+def tw_ccs_calibration_from_params(z, fit_func, params):
+    """
+    Create a new `CCSCalibrationTW` instance directly from optimized parameters
+
+    Parameters
+    ----------
+    z : ``int``
+        charge state
+    fit_func : ``str``
+        fitting function to use
+    params : ``Tuple(?)``
+        optimized parameters
+
+    Returns
+    -------
+    cal : ``CCSCalibrationTW``
+        optimized `CCSCalibrationTW` instance
+    """
+    cal = CCSCalibrationTW(None, None, None, z, fit_func, fit=False)
+    cal.opt_params = params
+    return cal

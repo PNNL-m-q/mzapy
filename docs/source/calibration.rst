@@ -36,6 +36,8 @@ Mass Calibration
 
 .. autofunction :: mzapy.calibration.MassCalibration.calibrated_mass
 
+.. autofunction :: mzapy.calibration.mass_calibration_from_params
+
 
 
 DTIMS CCS Calibration (Single-Field)
@@ -47,6 +49,7 @@ DTIMS CCS Calibration (Single-Field)
 
 .. autofunction :: mzapy.calibration.CCSCalibrationDTsf.calibrated_ccs
 
+.. autofunction :: mzapy.calibration.dtsf_ccs_calibration_from_params
 
 
 TWIMS CCS Calibration
@@ -57,3 +60,5 @@ TWIMS CCS Calibration
 .. autofunction :: mzapy.calibration.CCSCalibrationTW.__init__
 
 .. autofunction :: mzapy.calibration.CCSCalibrationTW.calibrated_ccs
+
+.. autofunction :: mzapy.calibration.tw_ccs_calibration_from_params

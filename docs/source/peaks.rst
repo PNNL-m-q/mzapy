@@ -48,13 +48,25 @@ dense and sparse spectral data:*
 Module Reference
 ---------------------------------------
 
+
+Interpolation
+***************************************
+
 .. autofunction :: mzapy.peaks.lerp_1d
 
 .. autofunction :: mzapy.peaks.lerp_2d
 
+
+Peak Finding
+***************************************
+
 .. autofunction :: mzapy.peaks.find_peaks_1d_localmax
 
 .. autofunction :: mzapy.peaks.find_peaks_1d_gauss
+
+
+Miscellaneous
+***************************************
 
 .. autofunction :: mzapy.peaks.calc_gauss_psnr
 

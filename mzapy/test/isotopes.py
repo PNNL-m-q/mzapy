@@ -9,7 +9,7 @@ Dylan Ross (dylan.ross@pnnl.gov)
 
 import unittest
 
-from mzapy.isotopes import MolecularFormula, monoiso_mass
+from mzapy.isotopes import MolecularFormula, OrderedMolecularFormula, monoiso_mass
 
 
 class TestMolecularFormula(unittest.TestCase):
@@ -119,17 +119,121 @@ class TestMolecularFormula(unittest.TestCase):
         self.assertDictEqual(mol.data, {'C': 2, 'H': 4, 'O': 1})  # original is unchanged
 
 
+class TestOrderedMolecularFormula(unittest.TestCase):
+    """ unit tests for the OrderedMolecularFormula class """
+
+    def test_init_empty(self):
+        with self.assertRaises(TypeError,
+                               msg="should get a TypeError for missing the required argument 'formula'"):
+            mol = OrderedMolecularFormula()
+        
+    def test_init_from_str(self):
+        mol = OrderedMolecularFormula("CH4O")
+        self.assertDictEqual(mol.data, {'C': 1, 'H': 4, 'O': 1})
+
+    def test_init_from_ordered_molecular_formula(self):
+        mol1 = MolecularFormula({'C': 1, 'H': 4, 'O': 1})
+        mol2 = OrderedMolecularFormula(mol1)
+        self.assertDictEqual(mol1.data, mol2.data)
+
+    def test_add_ordered_molecular_formulas(self):
+        mol1 = OrderedMolecularFormula("CH4O")
+        mol2 = OrderedMolecularFormula("C2H4")
+        mol3 = mol1 + mol2
+        self.assertDictEqual(mol3.data, {'C': 3, 'H': 8, 'O': 1})
+
+    def test_add_dict_to_ordered_molecular_formula(self):
+        mol = OrderedMolecularFormula("CH4O")
+        d = {'C': 2, 'H': 4}
+        mol3 = mol + d
+        self.assertDictEqual(mol3.data, {'C': 3, 'H': 8, 'O': 1})
+
+    def test_radd_dict_to_ordered_molecular_formula(self):
+        mol = OrderedMolecularFormula("CH4O")
+        d = {'C': 2, 'H': 4}
+        mol3 = d + mol
+        self.assertDictEqual(mol3.data, {'C': 3, 'H': 8, 'O': 1})
+
+    def test_iadd_ordered_molecular_formulas(self):
+        mol1 = OrderedMolecularFormula("CH4O")
+        mol2 = OrderedMolecularFormula("C2H4")
+        mol1 += mol2
+        self.assertDictEqual(mol1.data, {'C': 3, 'H': 8, 'O': 1})
+
+    def test_iadd_dict_to_ordered_molecular_formula(self):
+        mol = OrderedMolecularFormula("CH4O")
+        d = {'C': 2, 'H': 4}
+        mol += d
+        self.assertDictEqual(mol.data, {'C': 3, 'H': 8, 'O': 1})
+
+    def test_sub_ordered_molecular_formulas(self):
+        mol1 = OrderedMolecularFormula("C3H8O")
+        mol2 = OrderedMolecularFormula("C2H4")
+        mol3 = mol1 - mol2
+        self.assertDictEqual(mol3.data, {'C': 1, 'H': 4, 'O': 1})
+
+    def test_sub_dict_from_ordered_molecular_formula(self):
+        mol = OrderedMolecularFormula("C3H8O")
+        d = {'C': 2, 'H': 4}
+        mol3 = mol - d
+        self.assertDictEqual(mol3.data, {'C': 1, 'H': 4, 'O': 1})
+    
+    def test_sub_ordered_molecular_formula_from_dict(self):
+        mol = OrderedMolecularFormula("C3H8O")
+        d = {'C': 2, 'H': 4}
+        with self.assertRaises(TypeError):
+            # not allowed to subtract OrderedMolecularFormula from dict (no __rsub__)
+            mol3 = d - mol
+    
+    def test_isub_ordered_molecular_formulas(self):
+        mol1 = OrderedMolecularFormula("C3H8O")
+        mol2 = OrderedMolecularFormula("C2H4")
+        mol1 -= mol2
+        self.assertDictEqual(mol1.data, {'C': 1, 'H': 4, 'O': 1})
+
+    def test_sub_dict_from_ordered_molecular_formula(self):
+        mol = OrderedMolecularFormula("C3H8O")
+        d = {'C': 2, 'H': 4}
+        mol -= d
+        self.assertDictEqual(mol.data, {'C': 1, 'H': 4, 'O': 1})
+
+    def test_repr(self):
+        # TODO (Dylan Ross): add some more cases here
+        self.assertEqual(OrderedMolecularFormula("C4H12O").__repr__(), "OrderedMolecularFormula{'C': 4, 'H': 12, 'O': 1}")
+
+    def test_str(self):
+        # TODO (Dylan Ross): add some more cases here
+        self.assertEqual(OrderedMolecularFormula("C4H12O").__str__(), "H12C4O")
+    
+    def test_ordered_molecular_formulas_are_independent(self):
+        mol = OrderedMolecularFormula("C2H4")
+        O = OrderedMolecularFormula("O")
+        mol += O
+        # mol should have had O added to it and d and O (OrderedMolecularFormula) should both be unchanged after the addition
+        self.assertDictEqual(O.data, {'O': 1})
+        self.assertDictEqual(mol.data, {'C': 2, 'H': 4, 'O': 1})
+        # make a OrderedMolecularFormula from another OrderedMolecularFormula, change it and make sure the original one is unchanged
+        mol2 = OrderedMolecularFormula(mol)
+        _ = mol2.pop('O')
+        self.assertDictEqual(mol2.data, {'C': 2, 'H': 4})  # new has had O removed
+        self.assertDictEqual(mol.data, {'C': 2, 'H': 4, 'O': 1})  # original is unchanged
+
+
 class TestMassCalcs(unittest.TestCase):
     """ unit tests for mass calculation functions """
 
     def test_monoiso_mass_accuracy(self):
         # TODO (Dylan Ross): add more compounds to test more elements
-        # test mass accuracy for a few compounds
+        # test mass accuracy for a few compounds (MolecularFormula)
         self.assertAlmostEqual(monoiso_mass(MolecularFormula(C=5, H=5, N=5)), 135.05449518, places=5)
         self.assertAlmostEqual(monoiso_mass(MolecularFormula(C=39, H=76, N=1, O=8, P=1)), 717.530857, places=5)
         self.assertAlmostEqual(monoiso_mass(MolecularFormula(C=39, H=76, N=1, O=8, P=1, Na=1)), 740.5201, places=2)
         self.assertAlmostEqual(monoiso_mass(MolecularFormula(C=131, H=229, N=39, O=31)), 2844.7542, places=4)
-
+        # test mass accuracy for a few compounds (OrderedMolecularFormula)
+        self.assertAlmostEqual(monoiso_mass(OrderedMolecularFormula("C5H5N5")), 135.05449518, places=5)
+        self.assertAlmostEqual(monoiso_mass(OrderedMolecularFormula("C39H76NO8P")), 717.530857, places=5)
+        self.assertAlmostEqual(monoiso_mass(OrderedMolecularFormula("C39H76NO8PNa")), 740.5201, places=2)
+        self.assertAlmostEqual(monoiso_mass(OrderedMolecularFormula("C131H229N39O31")), 2844.7542, places=4)
 
 if __name__ == '__main__':
     # run all TestCases
