@@ -98,7 +98,7 @@ class _CalibrationBase:
             msg = '_CalibrationBase: fit: self.init_params has not been set, this should have been set by subclass'
             raise RuntimeError(msg)
         try:
-            opt_params, cov = optimize.curve_fit(self.fit_function, X, y, maxfev=50000, p0=self.init_params)
+            opt_params, cov = optimize.curve_fit(self.fit_function, X, y, maxfev=1000000, p0=self.init_params)
         except Exception as e:
             msg = '_CalibrationBase: fit: unable to fit calibration:\n{}'
             raise RuntimeError(msg.format(e))            
