@@ -95,6 +95,9 @@ class MZA():
         """
         # validate and store the mza version
         if mza_version not in _MZA_VERSIONS_SUPPORTED:
+            # TODO: Does the new converter (version=1.0) still produce compatible non-DDA data? Are there
+            #       any modifications to the normal MZA class that are necessary to accommodate the updates?
+            #       Also, 
             msg = 'MZA: __init__: this version of MZA does not support .mza format version: {}'
             raise ValueError(msg.format(mza_version))
         self.mza_version = mza_version
