@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.8.0.no_full_mz_array_0'
+__version__ = '1.8.0.no_full_mz_array_1'
 
 
 import queue
@@ -40,8 +40,6 @@ class MZA():
         file name (and optionally path to) the source HDF5 file
     h5 : ``h5py.File``
         h5py File object for extracting information from the HDF5 file
-    mz_full : numpy.ndarray(float)
-        full m/z array
     min_mz : ``float``
         minimum m/z value
     max_mz : ``float``
@@ -115,9 +113,10 @@ class MZA():
             self._idx_to_path = {}
             for i, p in zip(self.metadata('Scan'), self.metadata('MzaPath')):
                 self._idx_to_path[i] = p.decode()
+        # no_full_mz_array: self.mz_full no longer used
         # preload the full m/z array into memory, it potentially gets indexed quite a few times
-        self.mz_full = self.h5['Full_mz_array'][()]
-        self.min_mz, self.max_mz = min(self.mz_full), max(self.mz_full)
+        #self.mz_full = self.h5['Full_mz_array'][()]
+        #self.min_mz, self.max_mz = min(self.mz_full), max(self.mz_full)
         # set mappings between ims frame and ms1 frame
         self._ms1lvl = ms1lvl
         self._get_ms1_frames()
@@ -310,36 +309,37 @@ class MZA():
         """ MS level of all scans """
         return self.metadata('MSLevel')
 
-    def _closest_mzbin(self, mz, direction):
-        """
-        finds the closes mzbin value to an input m/z.
-        when used for computing bounds it is useful to find the closest mzbin that is above or below a value, which 
-        is controlled by the direction kwarg. By default, direction is 'any' meaning the closes mzbin is returned
-        regardless of direction. 
+    # no_full_mz_array: This method not needed anymore
+    # def _closest_mzbin(self, mz, direction):
+    #     """
+    #     finds the closes mzbin value to an input m/z.
+    #     when used for computing bounds it is useful to find the closest mzbin that is above or below a value, which 
+    #     is controlled by the direction kwarg. By default, direction is 'any' meaning the closes mzbin is returned
+    #     regardless of direction. 
 
-        Parameters
-        ----------
-        mz : ``float``
-            target m/z
-        direction : ``str``, default='any'
-            specify whether the closest mzbin above or below the target value should be returned, 'any' to ignore 
-            direction and just return the closest mz bin
-        """
-        idx_any = dmz = np.abs(mz - self.mz_full).argmin()
-        if direction == 'any':
-            return idx_any
-        if direction == 'above':
-            if mz > self.max_mz:
-                'MZA._closest_mzbin: target m/z {} is greater than maximum m/z value {}'
-                raise ValueError(msg.format(mz, self.max_mz))
-            return idx_any if self.mz_full[idx_any] > mz else idx_any + 1
-        elif direction == 'below':
-            if mz < self.min_mz:
-                'MZA._closest_mzbin: target m/z {} is less than minimum m/z value {}'
-                raise ValueError(msg.format(mz, self.min_mz))
-            return idx_any if self.mz_full[idx_any] < mz else idx_any - 1
-        msg = 'MZA._closest_mzbin: direction kwarg must be "above", "below" or "any" (was: "{}")'
-        raise ValueError(msg.format(direction))
+    #     Parameters
+    #     ----------
+    #     mz : ``float``
+    #         target m/z
+    #     direction : ``str``, default='any'
+    #         specify whether the closest mzbin above or below the target value should be returned, 'any' to ignore 
+    #         direction and just return the closest mz bin
+    #     """
+    #     idx_any = dmz = np.abs(mz - self.mz_full).argmin()
+    #     if direction == 'any':
+    #         return idx_any
+    #     if direction == 'above':
+    #         if mz > self.max_mz:
+    #             'MZA._closest_mzbin: target m/z {} is greater than maximum m/z value {}'
+    #             raise ValueError(msg.format(mz, self.max_mz))
+    #         return idx_any if self.mz_full[idx_any] > mz else idx_any + 1
+    #     elif direction == 'below':
+    #         if mz < self.min_mz:
+    #             'MZA._closest_mzbin: target m/z {} is less than minimum m/z value {}'
+    #             raise ValueError(msg.format(mz, self.min_mz))
+    #         return idx_any if self.mz_full[idx_any] < mz else idx_any - 1
+    #     msg = 'MZA._closest_mzbin: direction kwarg must be "above", "below" or "any" (was: "{}")'
+    #     raise ValueError(msg.format(direction))
     
     def _read_scan_intensity(self, scan_idx, bin_idx_min, bin_idx_max):
         """
@@ -498,7 +498,7 @@ class MZA():
         Returns
         -------
         data : ``pandas.DataFrame``
-            data frame with columns mzbin, mz, intensity, rt, frame
+            data frame with columns mz, intensity, rt, frame
         """
         # determine the indices to select
         sel = (self.mslvl == self._ms1lvl) & (self.imb == 0) & (rt_min <= self.rt) & (self.rt <= rt_max)
@@ -509,15 +509,15 @@ class MZA():
         for idx, msl, rt, frame in zip(self.idx[sel], self.mslvl[sel], self.rt[sel], 
                                        self.metadata('IonMobilityFrame')[sel]):
             ms1_frame = self.frame_idx2ms1_frame[frame]
-            mzbins, intensities = multi_scan_data[idx]
-            for mzbin, intensity in zip(mzbins, intensities):
+            # no_full_mz_array: diectly read mzs, not mzbins
+            mzs, intensities = multi_scan_data[idx]
+            for mz, intensity in zip(mzs, intensities):
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, ms1_frame])
+                    data.append([mz, intensity, rt, ms1_frame])
                 else:
-                    mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
-                        data.append([mzbin, mz, intensity, rt, ms1_frame])
-        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'frame'])
+                        data.append([mz, intensity, rt, ms1_frame])
+        return pd.DataFrame(data, columns=['mz', 'intensity', 'rt', 'frame'])
 
     def collect_ms1_df_by_rt_dt(self, rt_min, rt_max, dt_min, dt_max, mz_bounds=None, verbose=False):
         """
@@ -541,7 +541,7 @@ class MZA():
         Returns
         -------
         data : ``pandas.DataFrame``
-            data frame with columns mzbin, mz, intensity, rt, dt, frame
+            data frame with columns mz, intensity, rt, dt, frame
         """
         sel = (self.mslvl == self._ms1lvl) & (self.imb != 0) & (rt_min <= self.rt) & \
               (self.rt <= rt_max) & (dt_min <= self.dt) & (self.dt <= dt_max)
@@ -551,15 +551,15 @@ class MZA():
         data = []  
         for idx, msl, rt, dt, frame in zip(self.idx[sel], self.mslvl[sel], self.rt[sel], self.dt[sel],
                                            self.metadata('IonMobilityFrame')[sel]):
-            mzbins, intensities = multi_scan_data[idx]
-            for mzbin, intensity in zip(mzbins, intensities):
+            # no_full_mz_array: diectly read mzs, not mzbins
+            mzs, intensities = multi_scan_data[idx]
+            for mz, intensity in zip(mzs, intensities):
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
+                    data.append([mz, intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
                 else:
-                    mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
-                        data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
-        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'dt', 'frame'])
+                        data.append([mz, intensity, rt, dt, self.frame_idx2ms1_frame[frame]])
+        return pd.DataFrame(data, columns=['mz', 'intensity', 'rt', 'dt', 'frame'])
 
     def collect_ms1_arrays_by_rt(self, rt_min, rt_max, mz_bounds=None):
         """
@@ -629,7 +629,7 @@ class MZA():
         Returns
         -------
         data : ``pandas.DataFrame``
-            data frame with columns mzbin, mz, intensity, rt
+            data frame with columns mz, intensity, rt
         """
         # determine the indices to select
         sel = (self.mslvl == 2) & (self.imb == 0) & (rt_min <= self.rt) & (self.rt <= rt_max)
@@ -639,15 +639,15 @@ class MZA():
         data = []
         for idx, msl, rt, frame in zip(self.idx[sel], self.mslvl[sel], self.rt[sel], 
                                        self.metadata('IonMobilityFrame')[sel]):
-            mzbins, intensities = multi_scan_data[idx]
-            for mzbin, intensity in zip(mzbins, intensities):
+            # no_full_mz_array: diectly read mzs, not mzbins
+            mzs, intensities = multi_scan_data[idx]
+            for mz, intensity in zip(mzs, intensities):
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt])
+                    data.append(mz, intensity, rt])
                 else:
-                    mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
-                        data.append([mzbin, mz, intensity, rt])
-        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt'])
+                        data.append([mz, intensity, rt])
+        return pd.DataFrame(data, columns=['mz', 'intensity', 'rt'])
 
     def collect_ms2_df_by_rt_dt(self, rt_min, rt_max, dt_min, dt_max, mz_bounds=None, verbose=False):
         """
@@ -671,7 +671,7 @@ class MZA():
         Returns
         -------
         data : ``pandas.DataFrame``
-            data frame with columns mzbin, mz, intensity, rt, dt
+            data frame with columns mz, intensity, rt, dt
         """
         sel = (self.mslvl == 2) & (self.imb != 0) & (rt_min <= self.rt) & \
               (self.rt <= rt_max) & (dt_min <= self.dt) & (self.dt <= dt_max)
@@ -681,15 +681,15 @@ class MZA():
         data = []  
         for idx, msl, rt, dt, frame in zip(self.idx[sel], self.mslvl[sel], self.rt[sel], self.dt[sel],
                                            self.metadata('IonMobilityFrame')[sel]):
-            mzbins, intensities = multi_scan_data[idx]
-            for mzbin, intensity in zip(mzbins, intensities):
+            # no_full_mz_array: diectly read mzs, not mzbins
+            mzs, intensities = multi_scan_data[idx]
+            for mz, intensity in zip(mzs, intensities):
                 if mz_bounds is None:
-                    data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt])
+                    data.append([mz, intensity, rt, dt])
                 else:
-                    mz = self.mz_full[mzbin]
                     if mz >= mz_min and mz <= mz_max:
-                        data.append([mzbin, self.mz_full[mzbin], intensity, rt, dt])
-        return pd.DataFrame(data, columns=['mzbin', 'mz', 'intensity', 'rt', 'dt'])
+                        data.append([mz, intensity, rt, dt])
+        return pd.DataFrame(data, columns=['mz', 'intensity', 'rt', 'dt'])
 
     def collect_ms2_arrays_by_rt(self, rt_min, rt_max, mz_bounds=None):
         """
