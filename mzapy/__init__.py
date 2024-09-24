@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.8.0.no_full_mz_array_1'
+__version__ = '1.8.0.no_full_mz_array_2'
 
 
 import queue
@@ -643,7 +643,7 @@ class MZA():
             mzs, intensities = multi_scan_data[idx]
             for mz, intensity in zip(mzs, intensities):
                 if mz_bounds is None:
-                    data.append(mz, intensity, rt])
+                    data.append([mz, intensity, rt])
                 else:
                     if mz >= mz_min and mz <= mz_max:
                         data.append([mz, intensity, rt])
