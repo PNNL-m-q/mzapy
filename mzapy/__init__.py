@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format
-__version__ = '1.8.dev3'
+__version__ = '1.8.dev4'
 
 
 import queue
@@ -195,8 +195,8 @@ class MZA():
             if inputs is None:
                 break
             scan_idx, component, bin_idx_min, bin_idx_max = inputs
-            if component == 'mzbins':
-                data = self._read_scan_mzbins(scan_idx, bin_idx_min, bin_idx_max)
+            if component == 'mzs':
+                data = self._read_scan_mzs(scan_idx, bin_idx_min, bin_idx_max)
             elif component == 'intensities':
                 data = self._read_scan_intensity(scan_idx, bin_idx_min, bin_idx_max)
             self._io_q_out.put((scan_idx, component, data))
@@ -369,7 +369,7 @@ class MZA():
             # indexed scan data
             return self.h5[full_index][bin_idx_min:bin_idx_max]
     
-    def _read_scan_mzbins(self, scan_idx, bin_idx_min, bin_idx_max):
+    def _read_scan_mzs(self, scan_idx, bin_idx_min, bin_idx_max):
         """
         reads the mzbins for a specified scan index, min/max bin indices can be provided to specify that only part of
         the scan data should be extracted. If both are set to None, then the full scan data is extracted
@@ -389,7 +389,7 @@ class MZA():
             array of mzbins from specified scan
         """
         path = '{}'.format(self._idx_to_path[scan_idx]) if self.mza_version == 'new' else ''
-        full_index = 'Arrays_mzbin{}/{}'.format(path, scan_idx)
+        full_index = 'Arrays_mz{}/{}'.format(path, scan_idx)
         if bin_idx_min is None and bin_idx_max is None:
             # full scan data
             return self.h5[full_index][()]
@@ -431,7 +431,7 @@ class MZA():
         Returns
         -------
         scan_data : ``dict(int:list(numpy.ndarray(int)))``
-            dictionary mapping scan index to [mzbins, intensities] as numpy.ndarrays
+            dictionary mapping scan index to [mzs, intensities] as numpy.ndarrays
         """
         scan_data = {}
         n_cached = 0
@@ -442,7 +442,7 @@ class MZA():
                 n_cached += 1
             else:
                 # scan indices into the input IO queue, IO threads will immediately start processing
-                self._io_q_in.put((idx, 'mzbins', None, None))
+                self._io_q_in.put((idx, 'mzs', None, None))
                 self._io_q_in.put((idx, 'intensities', None, None))
                 n_uncached += 1
         # track progress
@@ -466,7 +466,7 @@ class MZA():
             idx, component, data = self._io_q_out.get()
             if idx not in scan_data:
                 scan_data[idx] = [None, None]
-            if component == 'mzbins':
+            if component == 'mzs':
                 scan_data[idx][0] = data
             if component == 'intensities':
                 scan_data[idx][1] = data
@@ -778,7 +778,7 @@ class MZA():
             rt_min, rt_max = self.min_rt, self.max_rt
         if mslvl == 1: 
             df = self.collect_ms1_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
-        elif mslvl ==2 :
+        elif mslvl == 2 :
             df = self.collect_ms2_df_by_rt(rt_min, rt_max, mz_bounds=(mz_min, mz_max), verbose=verbose).groupby('rt').intensity.sum()
         xic_rt, xic_int = df.index.to_numpy(), df.to_numpy()
         return xic_rt, xic_int
