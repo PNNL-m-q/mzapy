@@ -20,6 +20,7 @@ MZA data converter tool is available at https://github.com/PNNL-m-q/mza
    :caption: API Reference
 
    MZA   
+   dda
    calibration
    isotopes
    peaks
