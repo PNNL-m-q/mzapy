@@ -10,7 +10,7 @@ Joon-Yong Lee (junyoni@gmail.com)
 
 # mza_version.major_version.minor_version
 # mza_version is kept in lockstep with release of MZA format (Currently 1.0)
-__version__ = '1.8.0'
+__version__ = '1.8.1'
 
 
 import queue

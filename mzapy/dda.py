@@ -53,7 +53,7 @@ class MsmsReaderDda():
         self.h5 = h5py.File(mza_file, 'r')
         self.f = mza_file
         self.metadata = pd.DataFrame(self.h5['Metadata'][:]).set_index('Scan')
-        self.arrays_mz = pd.DataFrame(self.h5['Arrays_mzbin'].items(), columns=['Scan', 'Data']).set_index('Scan')
+        self.arrays_mz = pd.DataFrame(self.h5['Arrays_mz'].items(), columns=['Scan', 'Data']).set_index('Scan')
         self.arrays_mz.index = self.arrays_mz.index.astype('int64')
         self.arrays_i = pd.DataFrame(self.h5['Arrays_intensity'].items(), columns=['Scan', 'Data']).set_index('Scan')
         self.arrays_i.index = self.arrays_i.index.astype('int64')
@@ -66,8 +66,8 @@ class MsmsReaderDda():
         self.ms2_scans = self.metadata[self.metadata['MSLevel'] == 2].index.to_numpy()
         rt = self.metadata[self.metadata['MSLevel'] == 1].loc[:, 'RetentionTime'].to_numpy()
         self.min_rt, self.max_rt = min(rt), max(rt)
-        self.mz_full = self.h5['Full_mz_array'][()]
-        self.min_mz, self.max_mz = min(self.mz_full), max(self.mz_full)
+        #self.mz_full = self.h5['Full_mz_array'][()]
+        #self.min_mz, self.max_mz = min(self.mz_full), max(self.mz_full)
     
     def close(self):
         """
@@ -98,8 +98,8 @@ class MsmsReaderDda():
         mz_min, mz_max = mz - mz_tol, mz + mz_tol
         for scan, srt in zip(self.ms1_scans, self.metadata.loc[self.ms1_scans, 'RetentionTime']):
             if rt_bounds is None or (srt >= rt_bounds[0] and srt <= rt_bounds[1]):  # optionally filter to only include specified RT range
-                smzb, sin = np.array([self.arrays_mz.loc[scan, 'Data'], self.arrays_i.loc[scan, 'Data']])
-                smz = self.mz_full[smzb.astype(np.int64)]
+                smz, sin = np.array([self.arrays_mz.loc[scan, 'Data'], self.arrays_i.loc[scan, 'Data']])
+                #smz = self.mz_full[smzb.astype(np.int64)]
                 rts.append(srt)
                 ins.append(np.sum(sin[(smz >= mz_min) & (smz <= mz_max)]))
         return np.array([rts, ins])
@@ -152,7 +152,7 @@ class MsmsReaderDda():
         # accumulate MS2 scans together
         for scan in peak_frag_scans:
             for m, i in zip(self.arrays_mz.loc[scan, 'Data'], self.arrays_i.loc[scan, 'Data']):
-                idx = mz_to_bin_idx(self.mz_full[m])
+                idx = mz_to_bin_idx(m)
                 if idx >= 0 and idx < n_bins:
                     i_bins[idx] += i
         # return accumulated spectrum
@@ -233,7 +233,7 @@ class MsmsReaderDdaCachedMs1(MsmsReaderDda):
             a_mz, a_i = np.zeros(shape=(2, scan_mz.size))
             scan_mz.read_direct(a_mz)
             scan_i.read_direct(a_i)
-            self.arrays_mz_cached[scan] = self.mz_full[a_mz.astype(np.int64)]
+            self.arrays_mz_cached[scan] = a_mz
             self.arrays_i_cached[scan] = a_i
 
     def close(self):
